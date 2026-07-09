@@ -253,5 +253,19 @@
 		.grid-3 {
 			grid-template-columns: 1fr;
 		}
+		/* Stack the action buttons full-width so nothing overflows the modal. */
+		.form-actions {
+			flex-direction: column-reverse;
+			align-items: stretch;
+		}
+		.fa-right {
+			flex-direction: column-reverse;
+			margin-left: 0;
+			gap: var(--s2);
+		}
+		.form-actions .btn {
+			width: 100%;
+			justify-content: center;
+		}
 	}
 </style>
