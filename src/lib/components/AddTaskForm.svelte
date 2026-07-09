@@ -13,5 +13,10 @@
 </script>
 
 <Modal bind:open title="新しい仕事 · New Task">
-	<TaskForm submitLabel="Add task" onsubmit={handleSubmit} oncancel={() => (open = false)} />
+	<TaskForm
+		submitLabel="Add task"
+		onsubmit={handleSubmit}
+		oncancel={() => (open = false)}
+		isDuplicate={(t) => todoStore.hasDuplicateTitle(t)}
+	/>
 </Modal>

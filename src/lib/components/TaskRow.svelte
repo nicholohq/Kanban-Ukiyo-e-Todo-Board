@@ -6,10 +6,11 @@
 	/**
 	 * @type {{
 	 *   task: import('$lib/stores/todoStore.svelte.js').Task,
-	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void
+	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
+	 *   ondelete?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void
 	 * }}
 	 */
-	let { task, onedit } = $props();
+	let { task, onedit, ondelete } = $props();
 
 	let expanded = $state(false);
 
@@ -69,7 +70,7 @@
 		>
 		<button
 			class="icon-btn icon-btn--danger"
-			onclick={() => todoStore.deleteTask(task.id)}
+			onclick={() => ondelete?.(task)}
 			aria-label="Delete {task.title}">🗑</button
 		>
 	</div>

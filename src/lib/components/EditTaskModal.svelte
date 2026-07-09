@@ -6,10 +6,11 @@
 	/**
 	 * @type {{
 	 *   task?: import('$lib/stores/todoStore.svelte.js').Task|null,
-	 *   onclose?: () => void
+	 *   onclose?: () => void,
+	 *   onrequestdelete?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void
 	 * }}
 	 */
-	let { task = null, onclose } = $props();
+	let { task = null, onclose, onrequestdelete } = $props();
 
 	/** @param {any} data */
 	function handleSubmit(data) {
@@ -25,6 +26,8 @@
 			submitLabel="Save changes"
 			onsubmit={handleSubmit}
 			oncancel={onclose}
+			ondelete={() => onrequestdelete?.(task)}
+			isDuplicate={(t) => todoStore.hasDuplicateTitle(t, task.id)}
 		/>
 	{/if}
 </Modal>

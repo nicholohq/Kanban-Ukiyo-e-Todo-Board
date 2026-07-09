@@ -6,6 +6,9 @@
 	let { onnew, ontogglesidebar } = $props();
 
 	let q = $state(todoStore.filters.search);
+	// Last value this input committed to the store — lets us tell our own
+	// (debounced) writes apart from external changes like "Clear filters".
+	let lastPushed = todoStore.filters.search;
 	/** @type {HTMLInputElement|null} */
 	let searchEl = $state(null);
 	/** @type {ReturnType<typeof setTimeout>|undefined} */
@@ -15,14 +18,27 @@
 	$effect(() => {
 		const val = q;
 		clearTimeout(timer);
-		timer = setTimeout(() => todoStore.setSearch(val), 250);
+		timer = setTimeout(() => {
+			lastPushed = val;
+			todoStore.setSearch(val);
+		}, 250);
 		return () => clearTimeout(timer);
 	});
 
-	// Reflect external clears (e.g. "clear filters") back into the box.
+	// Pull the store value back into the box ONLY when it changed externally
+	// (e.g. "Clear filters"), never mid-debounce — otherwise typing gets wiped.
 	$effect(() => {
-		if (todoStore.filters.search === '' && q !== '') q = '';
+		const s = todoStore.filters.search;
+		if (s !== lastPushed && s !== q) {
+			q = s;
+			lastPushed = s;
+		}
 	});
+
+	function clearSearch() {
+		q = '';
+		searchEl?.focus();
+	}
 
 	/** @param {KeyboardEvent} e — Ctrl/Cmd+K focuses search. */
 	function onWindowKeydown(e) {
@@ -61,10 +77,13 @@
 			bind:this={searchEl}
 			bind:value={q}
 			class="input search-input"
-			type="search"
+			type="text"
 			placeholder="Search tasks…  (Ctrl+K)"
 			aria-label="Search tasks by title or description"
 		/>
+		{#if q}
+			<button class="search-clear" onclick={clearSearch} aria-label="Clear search">×</button>
+		{/if}
 	</div>
 
 	<div class="actions">
@@ -131,6 +150,28 @@
 	}
 	.search-input {
 		padding-left: 32px;
+		padding-right: 32px;
+	}
+	.search-clear {
+		position: absolute;
+		right: 6px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 22px;
+		height: 22px;
+		display: grid;
+		place-items: center;
+		border: none;
+		border-radius: 50%;
+		background: var(--linen-2);
+		color: var(--charcoal);
+		font-size: 1rem;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.search-clear:hover {
+		background: var(--vermilion);
+		color: var(--linen);
 	}
 	.actions {
 		display: flex;

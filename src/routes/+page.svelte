@@ -7,6 +7,7 @@
 	import Loader from '$lib/components/Loader.svelte';
 	import AddTaskForm from '$lib/components/AddTaskForm.svelte';
 	import EditTaskModal from '$lib/components/EditTaskModal.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import KanbanBoard from '$lib/components/KanbanBoard.svelte';
 
@@ -15,6 +16,22 @@
 	let sidebarOpen = $state(false);
 	/** @type {import('$lib/stores/todoStore.svelte.js').Task|null} */
 	let editing = $state(null);
+	/** @type {import('$lib/stores/todoStore.svelte.js').Task|null} */
+	let pendingDelete = $state(null);
+
+	/** @param {import('$lib/stores/todoStore.svelte.js').Task} task */
+	function requestDelete(task) {
+		pendingDelete = task;
+	}
+
+	function confirmDelete() {
+		if (pendingDelete) {
+			const id = pendingDelete.id;
+			todoStore.deleteTask(id);
+			if (editing && editing.id === id) editing = null;
+		}
+		pendingDelete = null;
+	}
 
 	onMount(() => {
 		// Brief loader for polish; hydration itself is synchronous.
@@ -45,14 +62,26 @@
 			{#if todoStore.view === 'board'}
 				<KanbanBoard onedit={(t) => (editing = t)} onnew={() => (showAdd = true)} />
 			{:else}
-				<TaskList onedit={(t) => (editing = t)} onnew={() => (showAdd = true)} />
+				<TaskList
+					onedit={(t) => (editing = t)}
+					ondelete={requestDelete}
+					onnew={() => (showAdd = true)}
+				/>
 			{/if}
 		</main>
 	</div>
 </div>
 
 <AddTaskForm bind:open={showAdd} />
-<EditTaskModal task={editing} onclose={() => (editing = null)} />
+<EditTaskModal task={editing} onclose={() => (editing = null)} onrequestdelete={requestDelete} />
+<ConfirmDialog
+	open={!!pendingDelete}
+	title="Delete task?"
+	message={pendingDelete ? `Delete “${pendingDelete.title}”? This can’t be undone.` : ''}
+	confirmLabel="Delete"
+	onconfirm={confirmDelete}
+	oncancel={() => (pendingDelete = null)}
+/>
 <Toast />
 
 <style>

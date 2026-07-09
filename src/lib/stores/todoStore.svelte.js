@@ -153,13 +153,29 @@ class TodoStore {
 	// ---- CRUD ---------------------------------------------------------------
 
 	/**
-	 * Create a task from partial input. Title is required (trimmed).
+	 * Does another task already use this title? (case-insensitive, trimmed)
+	 * @param {string} title
+	 * @param {string} [exceptId] id to ignore (the task being edited)
+	 * @returns {boolean}
+	 */
+	hasDuplicateTitle(title, exceptId) {
+		const t = (title ?? '').trim().toLowerCase();
+		if (!t) return false;
+		return this.tasks.some(
+			(task) => task.id !== exceptId && task.title.trim().toLowerCase() === t
+		);
+	}
+
+	/**
+	 * Create a task from partial input. Title is required (trimmed) and must not
+	 * duplicate an existing title.
 	 * @param {Partial<Task>} input
 	 * @returns {Task|null} the created task, or null if invalid
 	 */
 	addTask(input) {
 		const title = (input.title ?? '').trim();
 		if (!title) return null;
+		if (this.hasDuplicateTitle(title)) return null;
 		const now = Date.now();
 		/** @type {Task} */
 		const task = {
@@ -192,6 +208,8 @@ class TodoStore {
 	 * @param {Partial<Task>} patch
 	 */
 	updateTask(id, patch) {
+		// Defense-in-depth: refuse a rename that would collide with another task.
+		if (patch.title !== undefined && this.hasDuplicateTitle(String(patch.title), id)) return;
 		let changed = false;
 		this.tasks = this.tasks.map((t) => {
 			if (t.id !== id) return t;

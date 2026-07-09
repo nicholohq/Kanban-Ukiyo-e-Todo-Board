@@ -11,10 +11,19 @@
 	 *   initial?: Partial<import('$lib/stores/todoStore.svelte.js').Task>|null,
 	 *   submitLabel?: string,
 	 *   onsubmit?: (data: any) => void,
-	 *   oncancel?: () => void
+	 *   oncancel?: () => void,
+	 *   ondelete?: () => void,
+	 *   isDuplicate?: (title: string) => boolean
 	 * }}
 	 */
-	let { initial = null, submitLabel = 'Save task', onsubmit, oncancel } = $props();
+	let {
+		initial = null,
+		submitLabel = 'Save task',
+		onsubmit,
+		oncancel,
+		ondelete,
+		isDuplicate
+	} = $props();
 
 	let title = $state(initial?.title ?? '');
 	let description = $state(initial?.description ?? '');
@@ -59,6 +68,11 @@
 		if (tagDraft.trim()) commitDraft();
 		if (!title.trim()) {
 			error = 'Please enter a title.';
+			titleEl?.focus();
+			return;
+		}
+		if (isDuplicate?.(title)) {
+			error = 'A task with this title already exists.';
 			titleEl?.focus();
 			return;
 		}
@@ -148,10 +162,17 @@
 	</div>
 
 	<div class="form-actions">
-		{#if oncancel}
-			<button type="button" class="btn btn--ghost" onclick={oncancel}>Cancel</button>
+		{#if ondelete}
+			<button type="button" class="btn btn--ghost danger" onclick={ondelete}>
+				<span aria-hidden="true">🗑</span> Delete
+			</button>
 		{/if}
-		<button type="submit" class="btn btn--primary">{submitLabel}</button>
+		<div class="fa-right">
+			{#if oncancel}
+				<button type="button" class="btn btn--ghost" onclick={oncancel}>Cancel</button>
+			{/if}
+			<button type="submit" class="btn btn--primary">{submitLabel}</button>
+		</div>
 	</div>
 </form>
 
@@ -210,9 +231,22 @@
 	}
 	.form-actions {
 		display: flex;
-		justify-content: flex-end;
+		justify-content: space-between;
+		align-items: center;
 		gap: var(--s2);
 		margin-top: var(--s2);
+	}
+	.fa-right {
+		display: flex;
+		gap: var(--s2);
+		margin-left: auto;
+	}
+	.danger {
+		color: var(--vermilion);
+	}
+	.danger:hover {
+		background: var(--vermilion);
+		color: var(--linen);
 	}
 
 	@media (max-width: 520px) {

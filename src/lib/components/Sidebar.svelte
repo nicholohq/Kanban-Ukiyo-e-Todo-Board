@@ -9,6 +9,16 @@
 	let { open = false, onclose } = $props();
 
 	let active = $derived(isFilterActive(todoStore.filters));
+
+	// Lock body scroll while the mobile drawer is open (desktop sidebar is static).
+	$effect(() => {
+		if (!open || typeof window === 'undefined') return;
+		if (!window.matchMedia('(max-width: 768px)').matches) return;
+		document.body.style.overflow = 'hidden';
+		return () => {
+			document.body.style.overflow = '';
+		};
+	});
 </script>
 
 {#if open}
@@ -87,7 +97,9 @@
 			top: 0;
 			left: 0;
 			bottom: 0;
-			width: min(300px, 84vw);
+			height: 100vh;
+			height: 100dvh;
+			width: min(320px, 86vw);
 			z-index: 200;
 			border-radius: 0;
 			border-width: 0 4px 0 0;
