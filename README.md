@@ -92,6 +92,20 @@ The workflow sets `BASE_PATH` to `/<repo-name>` so assets resolve under a
 project subpath (`username.github.io/<repo-name>`). For a user/org root site
 (`username.github.io`), change `BASE_PATH` to an empty string in the workflow.
 
+### If a push doesn't deploy
+
+Occasionally a push doesn't create a workflow run (GitHub can miss a trigger),
+so the site looks "stuck" on the previous version even though the commit landed.
+It isn't a build failure — no run was started. To fix:
+
+- **Actions tab → "Deploy to GitHub Pages" → "Run workflow" → `main`** (the
+  workflow allows manual `workflow_dispatch`), or
+- push an empty commit to nudge it: `git commit --allow-empty -m "Re-deploy" && git push`.
+
+To check what's happening without opening the browser, query the public API:
+`https://api.github.com/repos/<owner>/<repo>/actions/runs` — compare the newest
+run's `head_sha` against your latest commit.
+
 ## License
 
 MIT — sample/portfolio project.
