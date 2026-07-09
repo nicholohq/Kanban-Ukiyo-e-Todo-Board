@@ -1,0 +1,162 @@
+<script>
+	import { todoStore } from '$lib/stores/todoStore.svelte.js';
+	import ViewToggle from './ViewToggle.svelte';
+
+	/** @type {{ onnew?: () => void, ontogglesidebar?: () => void }} */
+	let { onnew, ontogglesidebar } = $props();
+
+	let q = $state(todoStore.filters.search);
+	/** @type {HTMLInputElement|null} */
+	let searchEl = $state(null);
+	/** @type {ReturnType<typeof setTimeout>|undefined} */
+	let timer;
+
+	// Debounce search input -> store (250ms).
+	$effect(() => {
+		const val = q;
+		clearTimeout(timer);
+		timer = setTimeout(() => todoStore.setSearch(val), 250);
+		return () => clearTimeout(timer);
+	});
+
+	// Reflect external clears (e.g. "clear filters") back into the box.
+	$effect(() => {
+		if (todoStore.filters.search === '' && q !== '') q = '';
+	});
+
+	/** @param {KeyboardEvent} e — Ctrl/Cmd+K focuses search. */
+	function onWindowKeydown(e) {
+		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+			e.preventDefault();
+			searchEl?.focus();
+			searchEl?.select();
+		}
+	}
+</script>
+
+<svelte:window onkeydown={onWindowKeydown} />
+
+<header class="app-header">
+	<div class="brand">
+		<button
+			class="hamburger icon-btn"
+			onclick={ontogglesidebar}
+			aria-label="Toggle filters"
+			title="Toggle filters"
+		>
+			<span aria-hidden="true">☰</span>
+		</button>
+		<span class="brand-kanji" aria-hidden="true">浮世</span>
+		<div class="brand-text">
+			<h1>Ukiyo Kanban</h1>
+			<p class="brand-sub">
+				{todoStore.counts.filtered} of {todoStore.counts.total} tasks
+			</p>
+		</div>
+	</div>
+
+	<div class="search">
+		<span class="search-icon" aria-hidden="true">🔍</span>
+		<input
+			bind:this={searchEl}
+			bind:value={q}
+			class="input search-input"
+			type="search"
+			placeholder="Search tasks…  (Ctrl+K)"
+			aria-label="Search tasks by title or description"
+		/>
+	</div>
+
+	<div class="actions">
+		<ViewToggle />
+		<button class="btn btn--primary" onclick={onnew}>
+			<span aria-hidden="true">＋</span> New task
+		</button>
+	</div>
+</header>
+
+<style>
+	.app-header {
+		display: flex;
+		align-items: center;
+		gap: var(--s3);
+		flex-wrap: wrap;
+		padding: var(--s3) var(--s4);
+		background: var(--indigo);
+		border-bottom: var(--border);
+		position: sticky;
+		top: 0;
+		z-index: 50;
+	}
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: var(--s2);
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+	.brand-kanji {
+		font-family: var(--serif);
+		font-size: 1.9rem;
+		color: var(--gold);
+		line-height: 1;
+	}
+	.brand-text h1 {
+		color: var(--linen);
+		font-size: 1.2rem;
+		margin: 0;
+		letter-spacing: 1px;
+	}
+	.brand-sub {
+		color: var(--wasabi);
+		font-size: 0.78rem;
+		margin: 0;
+	}
+	.hamburger {
+		display: none;
+	}
+	.search {
+		position: relative;
+		flex: 1 1 260px;
+		max-width: 460px;
+	}
+	.search-icon {
+		position: absolute;
+		left: 10px;
+		top: 50%;
+		transform: translateY(-50%);
+		font-size: 0.85rem;
+		opacity: 0.6;
+		pointer-events: none;
+	}
+	.search-input {
+		padding-left: 32px;
+	}
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: var(--s2);
+	}
+
+	@media (max-width: 768px) {
+		.hamburger {
+			display: inline-grid;
+		}
+		.search {
+			order: 3;
+			flex-basis: 100%;
+			max-width: none;
+		}
+	}
+	@media (max-width: 520px) {
+		.app-header {
+			padding: var(--s2) var(--s3);
+		}
+		.brand-text h1 {
+			font-size: 1rem;
+		}
+		.actions .btn :global(span) {
+			margin: 0;
+		}
+	}
+</style>
