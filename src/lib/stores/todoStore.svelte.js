@@ -3,7 +3,8 @@
  *
  * Holds the task list, the active filters and the current view, exposes derived
  * projections (filtered list, board columns, counts, tags) and all CRUD /
- * mutation methods. State auto-persists to localStorage (debounced 300ms).
+ * mutation methods. State syncs to the server API and auto-persists to
+ * localStorage as a local cache.
  *
  * @typedef {'low'|'medium'|'high'} Priority
  * @typedef {'work'|'personal'|'study'|'other'} Category
@@ -27,6 +28,7 @@ import { loadState, saveState } from '$lib/utils/storage.js';
 import { createSeedTasks } from '$lib/utils/seedData.js';
 import { emptyFilters, filterTasks, collectTags, countBy } from '$lib/utils/filters.js';
 import { toasts } from '$lib/stores/toasts.svelte.js';
+import { fetchTasks, createTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask, reorderTasks } from '$lib/utils/api.js';
 
 export const CATEGORIES = /** @type {Category[]} */ (['work', 'personal', 'study', 'other']);
 export const PRIORITIES = /** @type {Priority[]} */ (['low', 'medium', 'high']);
@@ -64,7 +66,7 @@ class TodoStore {
 	filters = $state(emptyFilters());
 	/** @type {'list'|'board'} */
 	view = $state('board');
-	/** @type {'idle'|'saving'|'saved'|'error'} */
+	/** @type {'idle'|'loading'|'saving'|'saved'|'error'} */
 	saveStatus = $state('idle');
 
 	/** @type {ReturnType<typeof setTimeout>|null} */
@@ -102,17 +104,8 @@ class TodoStore {
 	}));
 
 	constructor() {
-		// Load persisted state or fall back to seed data (client only).
-		const persisted = browser ? loadState() : null;
-		if (persisted && Array.isArray(persisted.tasks)) {
-			this.tasks = persisted.tasks;
-			if (persisted.filters) this.filters = { ...emptyFilters(), ...persisted.filters };
-			this.view = persisted.view === 'list' ? 'list' : 'board';
-		} else if (browser) {
-			this.tasks = createSeedTasks(makeId);
-		}
+		this.saveStatus = 'loading';
 
-		// Auto-persist on any state change (deep), debounced.
 		if (browser) {
 			$effect.root(() => {
 				$effect(() => {
@@ -125,6 +118,27 @@ class TodoStore {
 				});
 			});
 		}
+	}
+
+	/** Fetch tasks from the server, falling back to localStorage. */
+	async init() {
+		this.saveStatus = 'loading';
+		try {
+			const tasks = await fetchTasks();
+			if (Array.isArray(tasks)) {
+				this.tasks = tasks;
+			}
+		} catch {
+			const persisted = browser ? loadState() : null;
+			if (persisted && Array.isArray(persisted.tasks)) {
+				this.tasks = persisted.tasks;
+				if (persisted.filters) this.filters = { ...emptyFilters(), ...persisted.filters };
+				this.view = persisted.view === 'list' ? 'list' : 'board';
+			} else {
+				this.tasks = createSeedTasks(makeId);
+			}
+		}
+		this.saveStatus = 'idle';
 	}
 
 	// ---- Persistence --------------------------------------------------------
@@ -196,9 +210,9 @@ class TodoStore {
 			createdAt: now,
 			updatedAt: now
 		};
-		// Newest first.
 		this.tasks = [task, ...this.tasks];
 		toasts.success('Task added.');
+		createTask(task).catch(() => toasts.error('Failed to save task to server.'));
 		return task;
 	}
 
@@ -208,7 +222,6 @@ class TodoStore {
 	 * @param {Partial<Task>} patch
 	 */
 	updateTask(id, patch) {
-		// Defense-in-depth: refuse a rename that would collide with another task.
 		if (patch.title !== undefined && this.hasDuplicateTitle(String(patch.title), id)) return;
 		let changed = false;
 		this.tasks = this.tasks.map((t) => {
@@ -219,14 +232,20 @@ class TodoStore {
 			if (patch.title !== undefined) next.title = String(patch.title).trim() || t.title;
 			return next;
 		});
-		if (changed) toasts.success('Task updated.');
+		if (changed) {
+			toasts.success('Task updated.');
+			apiUpdateTask(id, patch).catch(() => toasts.error('Failed to sync update to server.'));
+		}
 	}
 
 	/** @param {string} id */
 	deleteTask(id) {
 		const existed = this.tasks.some((t) => t.id === id);
 		this.tasks = this.tasks.filter((t) => t.id !== id);
-		if (existed) toasts.info('Task deleted.');
+		if (existed) {
+			toasts.info('Task deleted.');
+			apiDeleteTask(id).catch(() => toasts.error('Failed to sync deletion to server.'));
+		}
 	}
 
 	/**
@@ -241,7 +260,6 @@ class TodoStore {
 		if (!moving) return;
 		const updated = { ...moving, status, updatedAt: Date.now() };
 
-		// Everything except the moved task, preserving relative order.
 		const rest = this.tasks.filter((t) => t.id !== id);
 
 		if (index === undefined) {
@@ -249,7 +267,6 @@ class TodoStore {
 			return;
 		}
 
-		// Insert at `index` counting only tasks already in the target column.
 		/** @type {Task[]} */
 		const result = [];
 		let placedInColumn = 0;
@@ -277,17 +294,11 @@ class TodoStore {
 		const idSet = new Set(orderedIds);
 		const byId = new Map(this.tasks.map((t) => [t.id, t]));
 
-		// The dragged column's tasks, forced to this status, in the given order.
 		const columnTasks = orderedIds
 			.map((id) => byId.get(id))
 			.filter(Boolean)
 			.map((t) => (t.status === status ? t : { ...t, status, updatedAt: Date.now() }));
 
-		// Rebuild the array: keep every task NOT in the dragged list exactly where
-		// it was (so a sibling column committing on the same drop can't clobber a
-		// same-status task), and inject the reordered column at the first slot it
-		// previously occupied. Tasks whose id IS in the list are only re-added via
-		// columnTasks — never dropped.
 		/** @type {Task[]} */
 		const result = [];
 		let injected = false;
@@ -303,6 +314,8 @@ class TodoStore {
 		}
 		if (!injected) result.push(...columnTasks);
 		this.tasks = result;
+
+		reorderTasks(status, orderedIds).catch(() => toasts.error('Failed to sync reorder to server.'));
 	}
 
 	/** Toggle a task between done and todo (list-view checkbox). @param {string} id */
@@ -312,6 +325,10 @@ class TodoStore {
 				? { ...t, status: t.status === 'done' ? 'todo' : 'done', updatedAt: Date.now() }
 				: t
 		);
+		const task = this.tasks.find((t) => t.id === id);
+		if (task) {
+			apiUpdateTask(id, { status: task.status }).catch(() => toasts.error('Failed to sync to server.'));
+		}
 	}
 
 	// ---- Filters & view -----------------------------------------------------

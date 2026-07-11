@@ -1,6 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
+	import { auth } from '$lib/stores/auth.svelte.js';
 	import { todoStore } from '$lib/stores/todoStore.svelte.js';
+	import { goto } from '$app/navigation';
 	import Header from '$lib/components/Header.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import Toast from '$lib/components/Toast.svelte';
@@ -33,8 +35,12 @@
 		pendingDelete = null;
 	}
 
-	onMount(() => {
-		// Brief loader for polish; hydration itself is synchronous.
+	onMount(async () => {
+		if (!auth.user) {
+			goto('/login');
+			return;
+		}
+		await todoStore.init();
 		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const t = setTimeout(() => (ready = true), reduce ? 0 : 450);
 		return () => clearTimeout(t);
@@ -48,41 +54,41 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-{#if !ready}
+{#if auth.loading || !ready}
 	<Loader />
-{/if}
+{:else if auth.user}
+	<div class="app">
+		<Header onnew={() => (showAdd = true)} ontogglesidebar={() => (sidebarOpen = !sidebarOpen)} />
 
-<div class="app">
-	<Header onnew={() => (showAdd = true)} ontogglesidebar={() => (sidebarOpen = !sidebarOpen)} />
+		<div class="body">
+			<Sidebar open={sidebarOpen} onclose={() => (sidebarOpen = false)} />
 
-	<div class="body">
-		<Sidebar open={sidebarOpen} onclose={() => (sidebarOpen = false)} />
-
-		<main class="content">
-			{#if todoStore.view === 'board'}
-				<KanbanBoard onedit={(t) => (editing = t)} onnew={() => (showAdd = true)} />
-			{:else}
-				<TaskList
-					onedit={(t) => (editing = t)}
-					ondelete={requestDelete}
-					onnew={() => (showAdd = true)}
-				/>
-			{/if}
-		</main>
+			<main class="content">
+				{#if todoStore.view === 'board'}
+					<KanbanBoard onedit={(t) => (editing = t)} onnew={() => (showAdd = true)} />
+				{:else}
+					<TaskList
+						onedit={(t) => (editing = t)}
+						ondelete={requestDelete}
+						onnew={() => (showAdd = true)}
+					/>
+				{/if}
+			</main>
+		</div>
 	</div>
-</div>
 
-<AddTaskForm bind:open={showAdd} />
-<EditTaskModal task={editing} onclose={() => (editing = null)} onrequestdelete={requestDelete} />
-<ConfirmDialog
-	open={!!pendingDelete}
-	title="Delete task?"
-	message={pendingDelete ? `Delete “${pendingDelete.title}”? This can’t be undone.` : ''}
-	confirmLabel="Delete"
-	onconfirm={confirmDelete}
-	oncancel={() => (pendingDelete = null)}
-/>
-<Toast />
+	<AddTaskForm bind:open={showAdd} />
+	<EditTaskModal task={editing} onclose={() => (editing = null)} onrequestdelete={requestDelete} />
+	<ConfirmDialog
+		open={!!pendingDelete}
+		title="Delete task?"
+		message={pendingDelete ? `Delete “${pendingDelete.title}”? This can’t be undone.` : ''}
+		confirmLabel="Delete"
+		onconfirm={confirmDelete}
+		oncancel={() => (pendingDelete = null)}
+	/>
+	<Toast />
+{/if}
 
 <style>
 	.app {
