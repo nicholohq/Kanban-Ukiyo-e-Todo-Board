@@ -1,10 +1,8 @@
 import { migrate } from '$lib/server/migrate.js';
 import { verifyToken } from '$lib/server/auth.js';
 
-try {
+if (process.env.TURSO_DB_URL) {
 	await migrate();
-} catch (err) {
-	console.warn('[hooks] migration skipped —', err.message);
 }
 
 export function handle({ event, resolve }) {
