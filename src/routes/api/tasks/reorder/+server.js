@@ -14,18 +14,17 @@ export async function PUT({ locals, request }) {
 	}
 
 	const now = Date.now();
-	const stmt = db.transaction('WRITE');
 
 	try {
+		const transaction = await db.transaction('write');
 		for (let i = 0; i < taskIds.length; i++) {
-			await stmt.execute({
+			await transaction.execute({
 				sql: 'UPDATE tasks SET status = ?, position = ?, updated_at = ? WHERE id = ? AND user_id = ?',
 				args: [column, i, now, taskIds[i], locals.user.userId]
 			});
 		}
-		stmt.commit();
+		await transaction.commit();
 	} catch (err) {
-		stmt.rollback();
 		return json({ error: 'Failed to reorder tasks.' }, { status: 500 });
 	}
 
