@@ -52,6 +52,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Kanban — Ukiyo Kanban</title>
+</svelte:head>
+
 <svelte:window onkeydown={onKeydown} />
 
 {#if auth.loading || !ready}
