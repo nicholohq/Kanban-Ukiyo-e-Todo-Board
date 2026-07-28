@@ -142,6 +142,16 @@ Set in the Vercel project dashboard:
 | `TURSO_AUTH_TOKEN` | Turso database auth token          |
 | `JWT_SECRET`       | Secret key for signing JWT tokens  |
 
+## Documentation
+
+Full engineering documentation is available in the [`/docs`](./docs) directory:
+
+- [Project Philosophy](./docs/PROJECT_PHILOSOPHY.md) — vision, goals, and boundaries
+- [Architecture Overview](./docs/ARCHITECTURE_OVERVIEW.md) — high-level architecture and data flow
+- [Engineering Guide](./docs/ENGINEERING_GUIDE.md) — workflow, lifecycle, definition of done, AI collaboration rules
+- [Roadmap](./docs/ROADMAP.md) — product-versioned roadmap with status indicators
+- [Changelog](./docs/CHANGELOG.md) — version history (Keep a Changelog format)
+
 ## License
 
 MIT — sample/portfolio project.
