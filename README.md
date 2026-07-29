@@ -42,6 +42,7 @@ persistence** via Turso (edge SQLite).
 | Styling       | Hand-written CSS + CSS variables (no framework)     |
 | Build / host  | Vite · `@sveltejs/adapter-vercel` · Vercel          |
 | Fonts         | Noto Serif JP + Zen Kaku Gothic New                 |
+| PWA           | @vite-pwa/sveltekit · Workbox (injectManifest)      |
 
 ## Getting started
 
@@ -141,6 +142,15 @@ Set in the Vercel project dashboard:
 | `TURSO_DB_URL`     | Turso database URL                 |
 | `TURSO_AUTH_TOKEN` | Turso database auth token          |
 | `JWT_SECRET`       | Secret key for signing JWT tokens  |
+
+## ## PWA
+
+Ukiyo Kanban is a Progressive Web App. It can be installed on your device and works offline.
+
+- **Installable**: Add to home screen on Android, iOS, or desktop Chrome/Edge
+- **Offline app shell**: The app loads from cache even without network
+- **Non-disruptive updates**: Updates activate when you're idle — never during drag, edit, or form input
+- **Service Worker caching**: Network-first for API, cache-first for assets and fonts
 
 ## Documentation
 

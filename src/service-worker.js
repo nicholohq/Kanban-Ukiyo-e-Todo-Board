@@ -1,0 +1,81 @@
+/// <reference types="@sveltejs/kit" />
+/// <reference no-default-lib="true"/>
+/// <reference lib="esnext" />
+/// <reference lib="webworker" />
+
+import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { registerRoute, setCatchHandler } from 'workbox-routing';
+import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+import { ExpirationPlugin } from 'workbox-expiration';
+
+import { CACHE_SCHEMAS, getCacheName } from '$lib/sw/cache-config';
+
+const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
+
+cleanupOutdatedCaches();
+
+precacheAndRoute(self.__WB_MANIFEST);
+
+registerRoute(
+	({ url }) => url.pathname.startsWith('/api/') && url.pathname !== '/api/auth/login',
+	new NetworkFirst({
+		cacheName: getCacheName(CACHE_SCHEMAS.api),
+		networkTimeoutSeconds: 3,
+		plugins: [
+			new CacheableResponsePlugin({ statuses: [0, 200] }),
+			new ExpirationPlugin({
+				maxEntries: 100,
+				maxAgeSeconds: 24 * 60 * 60,
+				purgeOnQuotaError: true
+			})
+		]
+	})
+);
+
+registerRoute(
+	({ url }) => url.origin === 'https://fonts.googleapis.com',
+	new StaleWhileRevalidate({
+		cacheName: getCacheName(CACHE_SCHEMAS.googleFontsCss),
+		plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })]
+	})
+);
+
+registerRoute(
+	({ url }) => url.origin === 'https://fonts.gstatic.com',
+	new CacheFirst({
+		cacheName: getCacheName(CACHE_SCHEMAS.googleFontsFiles),
+		plugins: [
+			new CacheableResponsePlugin({ statuses: [0, 200] }),
+			new ExpirationPlugin({
+				maxEntries: 30,
+				maxAgeSeconds: 365 * 24 * 60 * 60,
+				purgeOnQuotaError: true
+			})
+		]
+	})
+);
+
+setCatchHandler(async ({ event }) => {
+	if (event.request.destination === 'document') {
+		const cached = await caches.match('/');
+		if (cached) return cached;
+	}
+	return Response.error();
+});
+
+sw.addEventListener('activate', (event) => {
+	event.waitUntil(
+		caches.keys().then((keys) =>
+			Promise.all(
+				keys
+					.filter((key) => !key.startsWith('workbox-precache'))
+					.filter(
+						(key) =>
+							!Object.values(CACHE_SCHEMAS).some((s) => key === `${s.name}-v${s.version}`)
+					)
+					.map((key) => caches.delete(key))
+			)
+		)
+	);
+});

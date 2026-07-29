@@ -29,16 +29,17 @@ Documentation, workflow, and project infrastructure.
 
 ---
 
-## v1.2 — PWA Foundation 📝
+## v1.2 — PWA Foundation ✓
 
 Make Ukiyo Kanban installable as a Progressive Web App with offline shell.
 
-- [📝] Web App Manifest
-- [📝] App Icons (all required sizes)
-- [📝] Service Worker (cache-first strategy)
-- [📝] Install Prompt UI
-- [📝] Offline Shell
-- [📝] PWA Lighthouse Audit ≥ 90
+- [✓] Web App Manifest
+- [✓] App Icons (all required sizes)
+- [✓] Service Worker (injectManifest with runtime caching)
+- [✓] Install Prompt UI
+- [✓] Offline Shell
+- [✓] PWA Lighthouse Audit ≥ 90
+- [✓] ADR-002: PWA Architecture
 
 ---
 
