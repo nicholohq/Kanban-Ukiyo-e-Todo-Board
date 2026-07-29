@@ -38,7 +38,7 @@
 		align-items: start;
 	}
 
-	@media (max-width: 768px) {
+	@media (max-width: 1024px) {
 		.board {
 			grid-template-columns: 1fr;
 		}

@@ -45,9 +45,9 @@
 <style>
 	.pwa-update {
 		position: fixed;
-		bottom: var(--s4);
+		bottom: max(var(--s4), env(safe-area-inset-bottom, 0px));
 		right: var(--s4);
-		z-index: 5000;
+		z-index: var(--z-loader);
 		display: flex;
 		align-items: center;
 		gap: var(--s3);
@@ -83,7 +83,7 @@
 		.pwa-update {
 			left: var(--s2);
 			right: var(--s2);
-			bottom: var(--s2);
+			bottom: max(var(--s2), env(safe-area-inset-bottom, 0px));
 		}
 	}
 

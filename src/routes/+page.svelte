@@ -5,13 +5,13 @@
 	import { goto } from '$app/navigation';
 	import Header from '$lib/components/Header.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import Toast from '$lib/components/Toast.svelte';
 	import Loader from '$lib/components/Loader.svelte';
 	import AddTaskForm from '$lib/components/AddTaskForm.svelte';
 	import EditTaskModal from '$lib/components/EditTaskModal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import KanbanBoard from '$lib/components/KanbanBoard.svelte';
+	import FAB from '$lib/components/FAB.svelte';
 
 	let ready = $state(false);
 	let showAdd = $state(false);
@@ -86,17 +86,18 @@
 	<ConfirmDialog
 		open={!!pendingDelete}
 		title="Delete task?"
-		message={pendingDelete ? `Delete “${pendingDelete.title}”? This can’t be undone.` : ''}
+		message={pendingDelete ? `Delete "${pendingDelete.title}"? This can't be undone.` : ''}
 		confirmLabel="Delete"
 		onconfirm={confirmDelete}
 		oncancel={() => (pendingDelete = null)}
 	/>
-	<Toast />
+	<FAB onclick={() => (showAdd = true)} />
 {/if}
 
 <style>
 	.app {
 		min-height: 100vh;
+		min-height: 100dvh;
 		display: flex;
 		flex-direction: column;
 	}
@@ -115,7 +116,7 @@
 		min-width: 0;
 	}
 
-	@media (max-width: 768px) {
+	@media (max-width: 1024px) {
 		.body {
 			grid-template-columns: 1fr;
 			padding: var(--s3);

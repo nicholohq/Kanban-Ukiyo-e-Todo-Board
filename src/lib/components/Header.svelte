@@ -105,7 +105,7 @@
 		border-bottom: var(--border);
 		position: sticky;
 		top: 0;
-		z-index: 50;
+		z-index: var(--z-header);
 	}
 	.brand {
 		display: flex;
@@ -154,16 +154,16 @@
 	}
 	.search-clear {
 		position: absolute;
-		right: 6px;
+		right: 4px;
 		top: 50%;
 		transform: translateY(-50%);
-		width: 22px;
-		height: 22px;
+		width: 44px;
+		height: 44px;
 		display: grid;
 		place-items: center;
 		border: none;
-		border-radius: 50%;
-		background: var(--linen-2);
+		border-radius: var(--radius);
+		background: transparent;
 		color: var(--charcoal);
 		font-size: 1rem;
 		line-height: 1;
@@ -179,7 +179,7 @@
 		gap: var(--s2);
 	}
 
-	@media (max-width: 768px) {
+	@media (max-width: 1024px) {
 		.hamburger {
 			display: inline-grid;
 		}

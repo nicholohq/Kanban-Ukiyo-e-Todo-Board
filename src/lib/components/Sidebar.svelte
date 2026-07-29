@@ -13,7 +13,7 @@
 	// Lock body scroll while the mobile drawer is open (desktop sidebar is static).
 	$effect(() => {
 		if (!open || typeof window === 'undefined') return;
-		if (!window.matchMedia('(max-width: 768px)').matches) return;
+		if (!window.matchMedia('(max-width: 1024px)').matches) return;
 		document.body.style.overflow = 'hidden';
 		return () => {
 			document.body.style.overflow = '';
@@ -23,10 +23,10 @@
 
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-	<div class="sb-backdrop" onclick={onclose}></div>
+	<div class="sb-backdrop" onclick={onclose} onkeydown={(e) => e.key === 'Escape' && onclose?.()}></div>
 {/if}
 
-<aside class="sidebar" class:open aria-label="Filters" aria-hidden={undefined}>
+<aside class="sidebar" class:open aria-label="Filters" aria-hidden={open ? 'false' : 'true'}>
 	<div class="sidebar-head">
 		<h2><span aria-hidden="true">絞</span> Filters</h2>
 		<button class="icon-btn close-btn" onclick={onclose} aria-label="Close filters">×</button>
@@ -91,7 +91,7 @@
 	}
 
 	/* --- Drawer behaviour on mobile --- */
-	@media (max-width: 768px) {
+	@media (max-width: 1024px) {
 		.sidebar {
 			position: fixed;
 			top: 0;
@@ -100,13 +100,15 @@
 			height: 100vh;
 			height: 100dvh;
 			width: min(320px, 86vw);
-			z-index: 200;
+			z-index: var(--z-sidebar);
 			border-radius: 0;
 			border-width: 0 4px 0 0;
 			box-shadow: 6px 0 0 rgba(0, 0, 0, 0.15);
 			transform: translateX(-105%);
 			transition: transform 0.25s ease;
 			overflow-y: auto;
+			-webkit-overflow-scrolling: touch;
+			overscroll-behavior: contain;
 		}
 		.sidebar.open {
 			transform: translateX(0);
@@ -118,7 +120,7 @@
 			display: block;
 			position: fixed;
 			inset: 0;
-			z-index: 150;
+			z-index: var(--z-sidebar-backdrop);
 			background: rgba(26, 42, 58, 0.5);
 		}
 	}

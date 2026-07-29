@@ -14,7 +14,7 @@
 	.loader {
 		position: fixed;
 		inset: 0;
-		z-index: 5000;
+		z-index: var(--z-loader);
 		background: var(--indigo);
 		display: flex;
 		flex-direction: column;

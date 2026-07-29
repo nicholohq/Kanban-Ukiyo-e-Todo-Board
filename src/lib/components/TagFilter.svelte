@@ -48,7 +48,7 @@
 		font-family: var(--gothic);
 		font-size: 0.76rem;
 		font-weight: 500;
-		padding: 2px 8px;
+		padding: 10px 12px;
 		border-radius: 999px;
 		border: 2px solid var(--indigo);
 		background: var(--paper);

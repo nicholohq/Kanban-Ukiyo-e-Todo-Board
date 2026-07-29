@@ -67,7 +67,7 @@
 
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-	<div class="backdrop" transition:fade={{ duration: 150 }} onclick={close}>
+	<div class="backdrop" transition:fade={{ duration: 150 }} onclick={close} onkeydown={(e) => e.key === 'Escape' && close()}>
 		<div
 			class="modal"
 			bind:this={dialogEl}
@@ -94,7 +94,7 @@
 	.backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 900;
+		z-index: var(--z-modal);
 		background: rgba(26, 42, 58, 0.55);
 		display: flex;
 		align-items: flex-start;

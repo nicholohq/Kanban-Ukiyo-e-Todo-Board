@@ -35,7 +35,7 @@
 		font-family: var(--gothic);
 		font-weight: 700;
 		font-size: 0.85rem;
-		padding: var(--s2) var(--s3);
+		padding: 10px var(--s3);
 		background: var(--paper);
 		color: var(--charcoal);
 		border: none;

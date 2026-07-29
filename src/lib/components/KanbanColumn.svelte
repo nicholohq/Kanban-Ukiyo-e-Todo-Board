@@ -117,6 +117,9 @@
 		min-height: 80px;
 		overflow-y: auto;
 		max-height: calc(100vh - 220px);
+		max-height: calc(100dvh - 220px);
+		overscroll-behavior: contain;
+		-webkit-overflow-scrolling: touch;
 	}
 	.card-wrap {
 		outline: none;

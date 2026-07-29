@@ -29,9 +29,9 @@
 <style>
 	.toast-region {
 		position: fixed;
-		bottom: var(--s4);
+		bottom: max(var(--s4), env(safe-area-inset-bottom, 0px));
 		right: var(--s4);
-		z-index: 1000;
+		z-index: var(--z-toast);
 		display: flex;
 		flex-direction: column;
 		gap: var(--s2);
@@ -78,13 +78,17 @@
 	}
 	.toast-close {
 		flex: none;
+		width: 44px;
+		height: 44px;
+		display: grid;
+		place-items: center;
 		background: none;
 		border: none;
 		font-size: 1.3rem;
 		line-height: 1;
 		cursor: pointer;
 		color: var(--charcoal);
-		padding: 0 2px;
+		padding: 0;
 	}
 	.toast-close:hover {
 		color: var(--vermilion);
@@ -94,7 +98,7 @@
 		.toast-region {
 			left: var(--s3);
 			right: var(--s3);
-			bottom: var(--s3);
+			bottom: max(var(--s3), env(safe-area-inset-bottom, 0px));
 			max-width: none;
 		}
 	}

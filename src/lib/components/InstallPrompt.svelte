@@ -59,10 +59,10 @@
 <style>
 	.pwa-install {
 		position: fixed;
-		bottom: var(--s4);
+		bottom: max(var(--s4), env(safe-area-inset-bottom, 0px));
 		left: 50%;
 		transform: translateX(-50%);
-		z-index: 5000;
+		z-index: var(--z-loader);
 		display: flex;
 		align-items: center;
 		gap: var(--s3);
@@ -113,7 +113,7 @@
 			flex-direction: column;
 			align-items: stretch;
 			text-align: center;
-			bottom: var(--s2);
+			bottom: max(var(--s2), env(safe-area-inset-bottom, 0px));
 			padding: var(--s2);
 		}
 

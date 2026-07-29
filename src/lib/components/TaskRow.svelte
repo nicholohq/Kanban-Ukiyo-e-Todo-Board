@@ -20,13 +20,15 @@
 </script>
 
 <article class="row" class:done>
-	<input
-		type="checkbox"
-		class="check"
-		checked={done}
-		onchange={() => todoStore.toggleDone(task.id)}
-		aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-	/>
+	<label class="check-hit">
+		<input
+			type="checkbox"
+			class="check"
+			checked={done}
+			onchange={() => todoStore.toggleDone(task.id)}
+			aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+		/>
+	</label>
 
 	<div class="main">
 		<div class="title-line">
@@ -97,13 +99,18 @@
 		opacity: 0.7;
 		background: var(--linen-2);
 	}
+	.check-hit {
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		flex: none;
+	}
 	.check {
 		width: 22px;
 		height: 22px;
-		margin-top: 2px;
 		accent-color: var(--matcha);
 		cursor: pointer;
-		flex: none;
 	}
 	.main {
 		min-width: 0;

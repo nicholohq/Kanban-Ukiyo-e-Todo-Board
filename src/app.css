@@ -14,19 +14,19 @@
 	--vermilion: #c41a1a; /* primary accent / CTA      */
 	--vermilion-2: #a01414; /* pressed accent            */
 	--indigo: #1a2a3a; /* secondary / headers       */
-	--matcha: #6b8f5e; /* success / done            */
+	--matcha: #5a7a4e; /* success / done            */
 	--wasabi: #8fc98a; /* highlight                 */
 	--gold: #c5a059; /* warm accent               */
 
 	/* ---- Priority hues ---- */
-	--pri-low: #6b8f5e; /* matcha  */
+	--pri-low: #5a7a4e; /* matcha  */
 	--pri-medium: #c5a059; /* gold    */
 	--pri-high: #c41a1a; /* vermilion */
 
 	/* ---- Status hues ---- */
 	--status-todo: #1a2a3a; /* indigo  */
 	--status-progress: #c5a059; /* gold    */
-	--status-done: #6b8f5e; /* matcha  */
+	--status-done: #5a7a4e; /* matcha  */
 
 	/* ---- Type ---- */
 	--serif: 'Noto Serif JP', 'Times New Roman', serif;
@@ -46,6 +46,21 @@
 	--shadow: 5px 5px 0 var(--charcoal); /* hard ukiyo-e print shadow */
 	--shadow-sm: 3px 3px 0 var(--charcoal);
 	--shadow-accent: 5px 5px 0 var(--vermilion);
+
+	/* ---- Z-index scale ---- */
+	--z-header: 50;
+	--z-sidebar-backdrop: 150;
+	--z-sidebar: 200;
+	--z-fab: 300;
+	--z-context-menu: 400;
+	--z-modal: 900;
+	--z-toast: 1000;
+	--z-loader: 5000;
+
+	/* TODO (v2.0): Add semantic token layer — --color-surface, --color-text-primary,
+	   --color-accent, --color-success, etc. Enables dark mode and theming. */
+	/* TODO (v2.0): Add motion tokens — --duration-fast: 120ms, --duration-normal: 200ms,
+	   --duration-slow: 350ms, --ease-in, --ease-out. Centralizes animation timing. */
 
 	--focus-ring: 0 0 0 3px var(--gold);
 	--ease: 0.18s ease;
@@ -69,6 +84,7 @@ body {
 	font-family: var(--gothic);
 	line-height: 1.6;
 	min-height: 100vh;
+	min-height: 100dvh;
 	/* faint seigaiha-inspired texture */
 	background-image: radial-gradient(circle at 1px 1px, rgba(26, 42, 58, 0.05) 1px, transparent 0);
 	background-size: 22px 22px;
@@ -166,8 +182,8 @@ a {
 .icon-btn {
 	display: inline-grid;
 	place-items: center;
-	width: 34px;
-	height: 34px;
+	width: 44px;
+	height: 44px;
 	border: var(--border-thin);
 	border-radius: var(--radius);
 	background: var(--paper);
