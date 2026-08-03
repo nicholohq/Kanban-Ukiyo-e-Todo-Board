@@ -1,20 +1,50 @@
 <script>
+	import { dragHandle } from 'svelte-dnd-action';
 	import { PRIORITY_META, CATEGORY_META } from '$lib/stores/todoStore.svelte.js';
 	import { formatDueDate, isOverdue, dueRelative } from '$lib/utils/dates.js';
 
 	/**
 	 * @type {{
 	 *   task: import('$lib/stores/todoStore.svelte.js').Task,
-	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void
+	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
+	 *   isdragging?: boolean
 	 * }}
 	 */
-	let { task, onedit } = $props();
+	let { task, onedit, isdragging = false } = $props();
 
 	let overdue = $derived(isOverdue(task.dueDate, task.status));
+
+	let dragging = $state(false);
+	let dragTimeout = 0;
+
+	$effect(() => {
+		if (isdragging) {
+			navigator.vibrate?.(10);
+			dragging = true;
+		} else if (dragging) {
+			clearTimeout(dragTimeout);
+			dragTimeout = setTimeout(() => {
+				dragging = false;
+			}, 100);
+		}
+		return () => clearTimeout(dragTimeout);
+	});
+
+	function handleCardClick() {
+		if (dragging) return;
+		onedit?.(task);
+	}
 </script>
 
-<div class="card" class:done={task.status === 'done'}>
+<div class="card" class:done={task.status === 'done'} onclick={handleCardClick}>
 	<div class="card-top">
+		<div
+			use:dragHandle
+			class="card-handle"
+			aria-label="Drag {task.title}"
+		>
+			<span aria-hidden="true">⠿</span>
+		</div>
 		<span
 			class="dot"
 			style="background:{PRIORITY_META[task.priority].tone}"
@@ -23,7 +53,7 @@
 		<h3 class="card-title" title={task.title}>{task.title}</h3>
 		<button
 			class="icon-btn card-edit"
-			onclick={() => onedit?.(task)}
+			onclick|stopPropagation={() => onedit?.(task)}
 			aria-label="Edit {task.title}">✎</button
 		>
 	</div>
@@ -58,10 +88,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--s2);
-		cursor: grab;
-	}
-	.card:active {
-		cursor: grabbing;
+		cursor: default;
 	}
 	.card.done {
 		background: var(--linen-2);
@@ -71,6 +98,32 @@
 		display: flex;
 		align-items: center;
 		gap: var(--s2);
+	}
+	.card-handle {
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		flex: none;
+		cursor: grab;
+		border-radius: var(--radius);
+		color: var(--charcoal);
+		opacity: 0.4;
+		transition:
+			opacity var(--ease),
+			background var(--ease),
+			transform var(--ease);
+		font-size: 1.1rem;
+	}
+	.card-handle:hover {
+		opacity: 1;
+		background: var(--linen-2);
+	}
+	.card-handle:active {
+		opacity: 1;
+		cursor: grabbing;
+		transform: scale(0.92);
+		background: var(--linen-2);
 	}
 	.card-title {
 		flex: 1;
@@ -90,8 +143,8 @@
 	}
 	.card-edit {
 		flex: none;
-		width: 28px;
-		height: 28px;
+		width: 44px;
+		height: 44px;
 		font-size: 0.9rem;
 	}
 	.card-desc {

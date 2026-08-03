@@ -1,5 +1,5 @@
 <script>
-	import { dndzone } from 'svelte-dnd-action';
+	import { dragHandleZone } from 'svelte-dnd-action';
 	import { flip } from 'svelte/animate';
 	import TaskCard from './TaskCard.svelte';
 	import { todoStore, STATUS_META } from '$lib/stores/todoStore.svelte.js';
@@ -18,9 +18,10 @@
 	// Local, drag-owned copy of the column. svelte-dnd-action mutates this list
 	// during a drag; we commit to the store on finalize.
 	let items = $state(tasks);
-	// Plain (non-reactive) flag: while true, don't let store updates clobber the
-	// in-progress drag. Read live inside the effect below.
-	let dragging = false;
+	// Reactive flag: while true, don't let store updates clobber the in-progress
+	// drag. Read live inside the effect below; also passed to TaskCard so it can
+	// guard against tap-to-edit after a drag.
+	let dragging = $state(false);
 
 	// Resync from the store whenever it changes and we're not mid-drag.
 	$effect(() => {
@@ -54,13 +55,13 @@
 
 	<div
 		class="col-body"
-		use:dndzone={{ items, flipDurationMs, dropTargetStyle: {} }}
+		use:dragHandleZone={{ items, flipDurationMs, delayTouchStart: 120, dropTargetStyle: {} }}
 		onconsider={handleConsider}
 		onfinalize={handleFinalize}
 	>
 		{#each items as task (task.id)}
 			<div class="card-wrap" animate:flip={{ duration: flipDurationMs }}>
-				<TaskCard {task} {onedit} />
+				<TaskCard {task} {onedit} isdragging={dragging} />
 			</div>
 		{/each}
 	</div>
