@@ -12,6 +12,8 @@
 	import TaskList from '$lib/components/TaskList.svelte';
 	import KanbanBoard from '$lib/components/KanbanBoard.svelte';
 	import FAB from '$lib/components/FAB.svelte';
+	import ContextMenu from '$lib/components/ContextMenu.svelte';
+	import UndoToast from '$lib/components/UndoToast.svelte';
 
 	let ready = $state(false);
 	let showAdd = $state(false);
@@ -20,6 +22,10 @@
 	let editing = $state(null);
 	/** @type {import('$lib/stores/todoStore.svelte.js').Task|null} */
 	let pendingDelete = $state(null);
+	/** @type {{ task: import('$lib/stores/todoStore.svelte.js').Task, x: number, y: number }|null} */
+	let contextMenu = $state(null);
+	/** @type {{ message: string }|null} */
+	let undoToast = $state(null);
 
 	/** @param {import('$lib/stores/todoStore.svelte.js').Task} task */
 	function requestDelete(task) {
@@ -29,10 +35,54 @@
 	function confirmDelete() {
 		if (pendingDelete) {
 			const id = pendingDelete.id;
+			todoStore.pushUndo('Delete task');
 			todoStore.deleteTask(id);
 			if (editing && editing.id === id) editing = null;
+			undoToast = { message: `Deleted "${pendingDelete.title}"` };
 		}
 		pendingDelete = null;
+	}
+
+	/** @param {import('$lib/stores/todoStore.svelte.js').Task} task
+	 *  @param {number} x
+	 *  @param {number} y */
+	function openContextMenu(task, x, y) {
+		if (editing || pendingDelete) return;
+		contextMenu = { task, x, y };
+	}
+
+	function closeContextMenu() {
+		contextMenu = null;
+	}
+
+	/** @param {string} action @param {import('$lib/stores/todoStore.svelte.js').Task} task */
+	function handleContextAction(action, task) {
+		switch (action) {
+			case 'edit':
+				editing = task;
+				break;
+			case 'delete':
+				pendingDelete = task;
+				break;
+			case 'duplicate':
+				todoStore.addTask({
+					title: `${task.title} (copy)`,
+					description: task.description,
+					priority: task.priority,
+					category: task.category,
+					dueDate: task.dueDate,
+					tags: [...task.tags]
+				});
+				break;
+			case 'toggle-done':
+				todoStore.toggleDone(task.id);
+				break;
+		}
+	}
+
+	function handleUndo() {
+		undoToast = null;
+		todoStore.undo();
 	}
 
 	onMount(async () => {
@@ -49,6 +99,14 @@
 	/** @param {KeyboardEvent} e */
 	function onKeydown(e) {
 		if (e.key === 'Escape' && sidebarOpen) sidebarOpen = false;
+		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+			// Don't hijack undo inside text fields.
+			const t = /** @type {HTMLElement|null} */ (e.target);
+			const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+			if (inField) return;
+			e.preventDefault();
+			todoStore.undo();
+		}
 	}
 </script>
 
@@ -69,12 +127,17 @@
 
 			<main class="content">
 				{#if todoStore.view === 'board'}
-					<KanbanBoard onedit={(t) => (editing = t)} onnew={() => (showAdd = true)} />
+					<KanbanBoard
+						onedit={(t) => (editing = t)}
+						onnew={() => (showAdd = true)}
+						oncontextmenu={openContextMenu}
+					/>
 				{:else}
 					<TaskList
 						onedit={(t) => (editing = t)}
 						ondelete={requestDelete}
 						onnew={() => (showAdd = true)}
+						oncontextmenu={openContextMenu}
 					/>
 				{/if}
 			</main>
@@ -86,10 +149,24 @@
 	<ConfirmDialog
 		open={!!pendingDelete}
 		title="Delete task?"
-		message={pendingDelete ? `Delete "${pendingDelete.title}"? This can't be undone.` : ''}
+		message={pendingDelete ? `Delete "${pendingDelete.title}"?` : ''}
 		confirmLabel="Delete"
 		onconfirm={confirmDelete}
 		oncancel={() => (pendingDelete = null)}
+	/>
+	<ContextMenu
+		open={!!contextMenu}
+		x={contextMenu?.x ?? 0}
+		y={contextMenu?.y ?? 0}
+		task={contextMenu?.task ?? null}
+		onaction={handleContextAction}
+		onclose={closeContextMenu}
+	/>
+	<UndoToast
+		open={!!undoToast}
+		message={undoToast?.message ?? ''}
+		onundo={handleUndo}
+		onclose={() => (undoToast = null)}
 	/>
 	<FAB onclick={() => (showAdd = true)} />
 {/if}

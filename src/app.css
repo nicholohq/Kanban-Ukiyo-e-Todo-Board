@@ -104,6 +104,13 @@ a {
 	color: var(--vermilion);
 }
 
+button,
+.btn,
+.icon-btn,
+a {
+	touch-action: manipulation;
+}
+
 ::selection {
 	background: var(--vermilion);
 	color: var(--linen);
@@ -304,6 +311,11 @@ a {
 	clip: rect(0, 0, 0, 0);
 	white-space: nowrap;
 	border: 0;
+}
+
+/* Disable text selection (used during touch gestures) */
+.no-select {
+	user-select: none;
 }
 
 /* Respect reduced motion */

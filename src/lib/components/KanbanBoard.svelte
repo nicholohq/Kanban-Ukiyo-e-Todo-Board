@@ -7,10 +7,11 @@
 	/**
 	 * @type {{
 	 *   onedit?: (task: any) => void,
-	 *   onnew?: () => void
+	 *   onnew?: () => void,
+	 *   oncontextmenu?: (task: any, x: number, y: number) => void
 	 * }}
 	 */
-	let { onedit, onnew } = $props();
+	let { onedit, onnew, oncontextmenu } = $props();
 
 	let anyTasks = $derived(todoStore.filteredTasks.length > 0);
 	let filtered = $derived(isFilterActive(todoStore.filters));
@@ -19,7 +20,7 @@
 {#if anyTasks || !filtered}
 	<div class="board">
 		{#each STATUSES as status (status)}
-			<KanbanColumn {status} tasks={todoStore.board[status]} {onedit} />
+			<KanbanColumn {status} tasks={todoStore.board[status]} {onedit} {oncontextmenu} />
 		{/each}
 	</div>
 {:else}

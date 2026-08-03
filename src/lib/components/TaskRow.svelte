@@ -2,81 +2,113 @@
 	import { todoStore, PRIORITY_META, CATEGORY_META } from '$lib/stores/todoStore.svelte.js';
 	import { formatDueDate, isOverdue, dueRelative } from '$lib/utils/dates.js';
 	import { slide } from 'svelte/transition';
+	import SwipeRow from './SwipeRow.svelte';
 
 	/**
 	 * @type {{
 	 *   task: import('$lib/stores/todoStore.svelte.js').Task,
 	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
-	 *   ondelete?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void
+	 *   ondelete?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
+	 *   oncontextmenu?: (task: any, x: number, y: number) => void
 	 * }}
 	 */
-	let { task, onedit, ondelete } = $props();
+	let { task, onedit, ondelete, oncontextmenu } = $props();
 
 	let expanded = $state(false);
 
 	let overdue = $derived(isOverdue(task.dueDate, task.status));
 	let done = $derived(task.status === 'done');
 	let rowId = $derived(`row-${task.id}`);
+	let isTouch = $derived(
+		typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window)
+	);
+
+	/** @param {MouseEvent} e */
+	function handleContextMenu(e) {
+		e.preventDefault();
+		oncontextmenu?.(task, e.clientX, e.clientY);
+	}
+
+	/** @param {KeyboardEvent} e */
+	function onRowKeydown(e) {
+		const isMenuKey = e.key === 'ContextMenu' || e.key === 'Application';
+		if (isMenuKey || (e.key === 'F10' && e.shiftKey)) {
+			e.preventDefault();
+			const el = /** @type {HTMLElement} */ (e.currentTarget);
+			const r = el.getBoundingClientRect();
+			oncontextmenu?.(task, r.left, r.bottom);
+		}
+	}
 </script>
 
-<article class="row" class:done>
-	<label class="check-hit">
-		<input
-			type="checkbox"
-			class="check"
-			checked={done}
-			onchange={() => todoStore.toggleDone(task.id)}
-			aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
-		/>
-	</label>
+<SwipeRow disabled={!isTouch} ondelete={() => ondelete?.(task)}>
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+	<article
+		class="row"
+		class:done
+		oncontextmenu={handleContextMenu}
+		onkeydown={onRowKeydown}
+		tabindex="0"
+		aria-label={task.title}
+	>
+		<label class="check-hit">
+			<input
+				type="checkbox"
+				class="check"
+				checked={done}
+				onchange={() => todoStore.toggleDone(task.id)}
+				aria-label={done ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+			/>
+		</label>
 
-	<div class="main">
-		<div class="title-line">
-			<button
-				class="title"
-				class:has-desc={task.description}
-				onclick={() => (expanded = task.description ? !expanded : expanded)}
-				aria-expanded={task.description ? expanded : undefined}
-				aria-controls={task.description ? rowId : undefined}
-				title={task.title}
-			>
-				{task.title}
-			</button>
-		</div>
+		<div class="main">
+			<div class="title-line">
+				<button
+					class="title"
+					class:has-desc={task.description}
+					onclick={() => (expanded = task.description ? !expanded : expanded)}
+					aria-expanded={task.description ? expanded : undefined}
+					aria-controls={task.description ? rowId : undefined}
+					title={task.title}
+				>
+					{task.title}
+				</button>
+			</div>
 
-		<div class="meta">
-			<span class="badge" style="border-color:{PRIORITY_META[task.priority].tone}">
-				<span class="dot" style="background:{PRIORITY_META[task.priority].tone}"></span>
-				{PRIORITY_META[task.priority].label}
-			</span>
-			<span class="badge">{CATEGORY_META[task.category].label}</span>
-			{#each task.tags as tag (tag)}
-				<span class="chip">#{tag}</span>
-			{/each}
-			{#if task.dueDate}
-				<span class="due" class:overdue title={dueRelative(task.dueDate)}>
-					<span aria-hidden="true">📅</span>
-					{formatDueDate(task.dueDate)}{#if overdue}<span class="due-flag"> · overdue</span>{/if}
+			<div class="meta">
+				<span class="badge" style="border-color:{PRIORITY_META[task.priority].tone}">
+					<span class="dot" style="background:{PRIORITY_META[task.priority].tone}"></span>
+					{PRIORITY_META[task.priority].label}
 				</span>
+				<span class="badge">{CATEGORY_META[task.category].label}</span>
+				{#each task.tags as tag (tag)}
+					<span class="chip">#{tag}</span>
+				{/each}
+				{#if task.dueDate}
+					<span class="due" class:overdue title={dueRelative(task.dueDate)}>
+						<span aria-hidden="true">📅</span>
+						{formatDueDate(task.dueDate)}{#if overdue}<span class="due-flag"> · overdue</span>{/if}
+					</span>
+				{/if}
+			</div>
+
+			{#if expanded && task.description}
+				<p id={rowId} class="desc" transition:slide={{ duration: 160 }}>{task.description}</p>
 			{/if}
 		</div>
 
-		{#if expanded && task.description}
-			<p id={rowId} class="desc" transition:slide={{ duration: 160 }}>{task.description}</p>
-		{/if}
-	</div>
-
-	<div class="row-actions">
-		<button class="icon-btn" onclick={() => onedit?.(task)} aria-label="Edit {task.title}"
-			>✎</button
-		>
-		<button
-			class="icon-btn icon-btn--danger"
-			onclick={() => ondelete?.(task)}
-			aria-label="Delete {task.title}">🗑</button
-		>
-	</div>
-</article>
+		<div class="row-actions">
+			<button class="icon-btn" onclick={() => onedit?.(task)} aria-label="Edit {task.title}"
+				>✎</button
+			>
+			<button
+				class="icon-btn icon-btn--danger"
+				onclick={() => ondelete?.(task)}
+				aria-label="Delete {task.title}">🗑</button
+			>
+		</div>
+	</article>
+</SwipeRow>
 
 <style>
 	.row {

@@ -8,10 +8,11 @@
 	 * @type {{
 	 *   status: import('$lib/stores/todoStore.svelte.js').Status,
 	 *   tasks: import('$lib/stores/todoStore.svelte.js').Task[],
-	 *   onedit?: (task: any) => void
+	 *   onedit?: (task: any) => void,
+	 *   oncontextmenu?: (task: any, x: number, y: number) => void
 	 * }}
 	 */
-	let { status, tasks, onedit } = $props();
+	let { status, tasks, onedit, oncontextmenu } = $props();
 
 	const flipDurationMs = 160;
 
@@ -61,7 +62,7 @@
 	>
 		{#each items as task (task.id)}
 			<div class="card-wrap" animate:flip={{ duration: flipDurationMs }}>
-				<TaskCard {task} {onedit} isdragging={dragging} />
+				<TaskCard {task} {onedit} {oncontextmenu} isdragging={dragging} />
 			</div>
 		{/each}
 	</div>

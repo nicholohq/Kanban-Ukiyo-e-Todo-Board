@@ -8,10 +8,11 @@
 	 * @type {{
 	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
 	 *   ondelete?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
-	 *   onnew?: () => void
+	 *   onnew?: () => void,
+	 *   oncontextmenu?: (task: any, x: number, y: number) => void
 	 * }}
 	 */
-	let { onedit, ondelete, onnew } = $props();
+	let { onedit, ondelete, onnew, oncontextmenu } = $props();
 
 	// Bucket the filtered tasks by status, preserving store order (newest first).
 	let grouped = $derived.by(() => {
@@ -37,7 +38,7 @@
 					</h2>
 					<div class="group-rows">
 						{#each grouped[status] as task (task.id)}
-							<TaskRow {task} {onedit} {ondelete} />
+							<TaskRow {task} {onedit} {ondelete} {oncontextmenu} />
 						{/each}
 					</div>
 				</section>

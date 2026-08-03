@@ -7,15 +7,24 @@
 	 * @type {{
 	 *   task: import('$lib/stores/todoStore.svelte.js').Task,
 	 *   onedit?: (task: import('$lib/stores/todoStore.svelte.js').Task) => void,
-	 *   isdragging?: boolean
+	 *   isdragging?: boolean,
+	 *   oncontextmenu?: (task: any, x: number, y: number) => void
 	 * }}
 	 */
-	let { task, onedit, isdragging = false } = $props();
+	let { task, onedit, isdragging = false, oncontextmenu } = $props();
 
 	let overdue = $derived(isOverdue(task.dueDate, task.status));
 
 	let dragging = $state(false);
 	let dragTimeout = 0;
+
+	// Long-press → context menu state.
+	let longPressTimer = 0;
+	let longPressStart = { x: 0, y: 0 };
+	let longPressed = $state(false);
+
+	const LONG_PRESS_MS = 500;
+	const LONG_PRESS_MOVE_PX = 10;
 
 	$effect(() => {
 		if (isdragging) {
@@ -30,13 +39,80 @@
 		return () => clearTimeout(dragTimeout);
 	});
 
-	function handleCardClick() {
+	function cancelLongPress() {
+		clearTimeout(longPressTimer);
+	}
+
+	/** @param {TouchEvent} e */
+	function onCardTouchStart(e) {
 		if (dragging) return;
+		const t = e.touches[0];
+		longPressStart = { x: t.clientX, y: t.clientY };
+		longPressed = false;
+		cancelLongPress();
+		longPressTimer = setTimeout(() => {
+			if (longPressed) return;
+			longPressed = true;
+			navigator.vibrate?.(20);
+			oncontextmenu?.(task, t.clientX, t.clientY);
+		}, LONG_PRESS_MS);
+	}
+
+	/** @param {TouchEvent} e */
+	function onCardTouchMove(e) {
+		const t = e.touches[0];
+		const dx = Math.abs(t.clientX - longPressStart.x);
+		const dy = Math.abs(t.clientY - longPressStart.y);
+		if (dx > LONG_PRESS_MOVE_PX || dy > LONG_PRESS_MOVE_PX) cancelLongPress();
+	}
+
+	function onCardTouchEnd() {
+		cancelLongPress();
+	}
+
+	/** @param {MouseEvent} e */
+	function handleContextMenu(e) {
+		e.preventDefault();
+		if (dragging || longPressed) return;
+		longPressed = true;
+		navigator.vibrate?.(20);
+		oncontextmenu?.(task, e.clientX, e.clientY);
+	}
+
+	/** @param {KeyboardEvent} e */
+	function onCardKeydown(e) {
+		const isMenuKey = e.key === 'ContextMenu' || e.key === 'Application';
+		if (isMenuKey || (e.key === 'F10' && e.shiftKey)) {
+			e.preventDefault();
+			if (dragging) return;
+			const el = /** @type {HTMLElement} */ (e.currentTarget);
+			const r = el.getBoundingClientRect();
+			oncontextmenu?.(task, r.left, r.bottom);
+		}
+	}
+
+	function handleCardClick() {
+		if (dragging || longPressed) {
+			longPressed = false;
+			return;
+		}
 		onedit?.(task);
 	}
 </script>
 
-<div class="card" class:done={task.status === 'done'} onclick={handleCardClick}>
+<div
+	class="card"
+	class:done={task.status === 'done'}
+	onclick={handleCardClick}
+	ontouchstart={onCardTouchStart}
+	ontouchmove={onCardTouchMove}
+	ontouchend={onCardTouchEnd}
+	ontouchcancel={cancelLongPress}
+	oncontextmenu={handleContextMenu}
+	onkeydown={onCardKeydown}
+	tabindex="0"
+	aria-label={task.title}
+>
 	<div class="card-top">
 		<div
 			use:dragHandle
@@ -89,6 +165,7 @@
 		flex-direction: column;
 		gap: var(--s2);
 		cursor: default;
+		-webkit-touch-callout: none;
 	}
 	.card.done {
 		background: var(--linen-2);

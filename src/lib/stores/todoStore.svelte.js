@@ -74,6 +74,10 @@ class TodoStore {
 	/** @type {ReturnType<typeof setTimeout>|null} */
 	#savedFlagTimer = null;
 
+	/** @type {{ snapshot: Task[], description: string }[]} */
+	#undoStack = [];
+	#maxUndoDepth = 10;
+
 	// ---- Derived projections ------------------------------------------------
 
 	/** Tasks passing the active filters. */
@@ -246,6 +250,34 @@ class TodoStore {
 			toasts.info('Task deleted.');
 			apiDeleteTask(id).catch(() => toasts.error('Failed to sync deletion to server.'));
 		}
+	}
+
+	/**
+	 * Record an undo snapshot of the current task state before a reversible
+	 * action. Additive — existing CRUD methods are unchanged.
+	 * @param {string} description human-readable action for undo toast
+	 */
+	pushUndo(description) {
+		this.#undoStack.push({
+			snapshot: $state.snapshot(this.tasks),
+			description
+		});
+		if (this.#undoStack.length > this.#maxUndoDepth) {
+			this.#undoStack.shift();
+		}
+	}
+
+	/** Restore the most recent undo snapshot, if any. */
+	undo() {
+		const entry = this.#undoStack.pop();
+		if (!entry) return;
+		this.tasks = entry.snapshot;
+		toasts.info(`Undid: ${entry.description}`);
+	}
+
+	/** @returns {boolean} whether an undo snapshot is available. */
+	get canUndo() {
+		return this.#undoStack.length > 0;
 	}
 
 	/**
