@@ -61,7 +61,7 @@
 | **localStorage fallback** | Offline resilience, no network dependency |
 | **No CSS framework** | Hand-written CSS for full aesthetic control |
 | **Vercel adapter** | Zero-config deployment, serverless API routes |
-| **@vite-pwa/sveltekit (injectManifest)** | Long-term SW maintainability; avoids v1.4 migration |
+| **@vite-pwa/sveltekit (generateSW)** | Restores a green Vite 8 production build; injectManifest blocked by swSrc ENOENT at SSR closeBundle. Legacy `src/service-worker.js` retained as documented fallback (Session 003F) |
 | **SW independent from Storage** | Service worker caches network resources only; storage layer handles persistence |
 | **Schema-based cache versioning** | Cache versions represent structure, not app version |
 
@@ -98,7 +98,7 @@
 | CSS | Hand-written with custom properties |
 | Hosting | Vercel (adapter-vercel) |
 | Fonts | Noto Serif JP + Zen Kaku Gothic New |
-| PWA | @vite-pwa/sveltekit + Workbox (injectManifest) |
+| PWA | @vite-pwa/sveltekit + Workbox (generateSW); legacy injectManifest fallback in `src/service-worker.js` |
 
 ## Future Architecture Changes
 
