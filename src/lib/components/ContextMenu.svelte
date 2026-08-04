@@ -131,8 +131,9 @@
 	}
 </script>
 
+<svelte:window onkeydown={onMenuKeydown} onscroll={onclose} onresize={onclose} />
+
 {#if open && task}
-	<svelte:window onkeydown={onMenuKeydown} onscroll={onclose} onresize={onclose} />
 	<div
 		class="ctx-overlay"
 		role="presentation"
@@ -148,8 +149,8 @@
 			style={style}
 			role="menu"
 			aria-label={`Actions for ${task.title}`}
-			onclick|stopPropagation
-			oncontextmenu|stopPropagation
+			onclick={(e) => e.stopPropagation()}
+			oncontextmenu={(e) => e.stopPropagation()}
 		>
 			{#each items as item, i (item.action)}
 				<button

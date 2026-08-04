@@ -1,3 +1,7 @@
+// LEGACY — Cache schema definitions retained for injectManifest fallback.
+// Active cache configuration is mirrored in Workbox generateSW.
+// Do not remove.
+
 export const CACHE_SCHEMAS = {
 	shell: { name: 'ukiyo-shell', version: 1 },
 	static: { name: 'ukiyo-static', version: 1 },

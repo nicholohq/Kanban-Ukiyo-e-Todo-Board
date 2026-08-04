@@ -129,7 +129,10 @@
 		<h3 class="card-title" title={task.title}>{task.title}</h3>
 		<button
 			class="icon-btn card-edit"
-			onclick|stopPropagation={() => onedit?.(task)}
+			onclick={(e) => {
+				e.stopPropagation();
+				onedit?.(task);
+			}}
 			aria-label="Edit {task.title}">✎</button
 		>
 	</div>
