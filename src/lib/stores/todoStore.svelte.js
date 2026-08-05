@@ -133,7 +133,7 @@ class TodoStore {
 				this.tasks = tasks;
 			}
 		} catch {
-			const persisted = browser ? loadState() : null;
+			const persisted = browser ? await loadState() : null;
 			if (persisted && Array.isArray(persisted.tasks)) {
 				this.tasks = persisted.tasks;
 				if (persisted.filters) this.filters = { ...emptyFilters(), ...persisted.filters };
@@ -151,8 +151,8 @@ class TodoStore {
 	#scheduleSave(snapshot) {
 		if (this.#saveTimer) clearTimeout(this.#saveTimer);
 		this.saveStatus = 'saving';
-		this.#saveTimer = setTimeout(() => {
-			const result = saveState(snapshot);
+		this.#saveTimer = setTimeout(async () => {
+			const result = await saveState(snapshot);
 			if (result.ok) {
 				this.saveStatus = 'saved';
 				if (this.#savedFlagTimer) clearTimeout(this.#savedFlagTimer);
