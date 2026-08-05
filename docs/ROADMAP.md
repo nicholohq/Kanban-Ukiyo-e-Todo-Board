@@ -54,11 +54,11 @@ Touch-first interactions and mobile polish.
 
 ---
 
-## v1.4 — Offline First 📝
+## v1.4 — Offline First 🚧
 
 Full offline capability with robust sync.
 
-- [📝] IndexedDB storage migration
+- [✓] IndexedDB storage migration (Session 004 — StorageFacade + adapters, ADR-003)
 - [📝] Sync queue for offline mutations
 - [📝] Background sync when online
 - [📝] Conflict resolution strategy

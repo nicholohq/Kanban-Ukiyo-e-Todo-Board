@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 
+- Storage layer: `StorageFacade` (`src/lib/storage/`) with IndexedDB primary and localStorage fallback behind a stable `loadState`/`saveState`/`clear` contract
+- `StorageAdapter` contract (JSDoc typedefs) with `IndexedDBAdapter` and `LocalStorageAdapter` implementations
+- Automatic localStorage → IndexedDB migration: idempotent, integrity-verified (task count + every task id), non-destructive
+- Atomic IndexedDB writes (tasks + settings in a single transaction, aborted on any failure)
+- Automated storage-layer test suite (Vitest + fake-indexeddb): 29 tests across facade, adapters, and migration
+- `check`, `test`, and `test:watch` npm scripts
+- ADR-003: Storage Layer Architecture
+- Session progress-log template with mandatory transition-state sections (`docs/progress/TEMPLATE.md`)
+- Session 004 progress log
 - Project philosophy and engineering principles documents
 - Engineering guide with AI collaboration rules
 - Architecture overview
@@ -22,6 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
+- `TodoStore` persistence now goes through the storage facade (async `loadState`/`saveState` awaited in `init()` and the debounced save)
+- `src/lib/utils/storage.js` reduced to a thin compatibility wrapper forwarding to the facade (marked legacy)
+- `idb` promoted from a transitive dependency to an explicit `dependencies` entry
+- `IndexedDBAdapter.saveState` hardened to abort the transaction on a synchronous write error, preserving the all-or-nothing guarantee (found via the new tests)
+- Architecture Overview reconciled to describe the implemented storage layer
 - Root README updated with Documentation section
 
 ---

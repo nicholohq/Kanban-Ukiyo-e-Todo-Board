@@ -2,7 +2,7 @@
 
 > A living document describing the high-level architecture of Ukiyo Kanban. This document evolves as the project grows.
 
-## Current Architecture (v1.2.0)
+## Current Architecture (Storage Layer — Session 004)
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -21,11 +21,11 @@
 │  └──────────────────────────────────────────────────────────────┘    │
 │                                    │                                 │
 │  ┌───────────┐  ┌──────────┐  ┌───┴────────────────────────────┐    │
-│  │  Login/   │  │  Main    │  │  Storage Abstraction           │    │
-│  │  Signup   │  │  App     │  │  src/lib/utils/storage.js      │    │
-│  └─────┬─────┘  └────┬─────┘  │  save/load interface           │    │
-│        │              │        │  ⟹ localStorage (current)      │    │
-│        │     ┌────────┴────────┐│  ⟹ IndexedDB (future v1.4)    │    │
+│  │  Login/   │  │  Main    │  │  StorageFacade                 │    │
+│  │  Signup   │  │  App     │  │  src/lib/storage/storage.js    │    │
+│  └─────┬─────┘  └────┬─────┘  │  loadState/saveState/clear     │    │
+│        │              │        │  ⟹ IndexedDB (primary)         │    │
+│        │     ┌────────┴────────┐│  ⟹ localStorage (fallback)    │    │
 │        │     │   TodoStore     │└──────────────────────────────┘    │
 │        │     │   AuthStore     │                                    │
 │        │     │   ToastStore    │                                    │
@@ -58,7 +58,10 @@
 | **Single runes store** | One TodoStore class for all task state |
 | **JWT in httpOnly cookies** | Secure token approach, prevents XSS theft |
 | **Turso edge SQLite** | Low-latency edge database, simple SQL |
-| **localStorage fallback** | Offline resilience, no network dependency |
+| **StorageFacade + adapters** | Decouple TodoStore from persistence; IndexedDB primary, localStorage fallback, behind one stable contract (ADR-003) |
+| **IndexedDB primary backend** | More headroom and structure than localStorage, with atomic writes |
+| **Automatic verified migration** | One-time localStorage → IndexedDB move; idempotent, integrity-checked, non-destructive |
+| **localStorage fallback** | Offline resilience where IndexedDB is unavailable |
 | **No CSS framework** | Hand-written CSS for full aesthetic control |
 | **Vercel adapter** | Zero-config deployment, serverless API routes |
 | **@vite-pwa/sveltekit (generateSW)** | Restores a green Vite 8 production build; injectManifest blocked by swSrc ENOENT at SSR closeBundle. Legacy `src/service-worker.js` retained as documented fallback (Session 003F) |
@@ -69,7 +72,7 @@
 
 1. User action → UI component → Store method
 2. Store updates local state (optimistic)
-3. Store debounce-saves to localStorage (300ms)
+3. Store debounce-saves via the storage facade — IndexedDB primary (300ms)
 4. Store fires server API call (fire-and-forget)
 5. API route → Turso query → response
 6. On failure: toast notification (no rollback)
@@ -80,7 +83,7 @@
 1. User opens app → Service Worker serves precached app shell
 2. App shell JS/CSS loaded from precache
 3. TodoStore.init() runs → API call fails (offline)
-4. TodoStore falls back to storage abstraction → reads from localStorage
+4. TodoStore falls back to the storage facade → reads from IndexedDB (or localStorage if IndexedDB is unavailable)
 5. Tasks displayed to user from local data
 6. CRUD operations work locally; server sync fails silently
 7. Toast: "Offline — changes saved locally"
@@ -99,6 +102,39 @@
 | Hosting | Vercel (adapter-vercel) |
 | Fonts | Noto Serif JP + Zen Kaku Gothic New |
 | PWA | @vite-pwa/sveltekit + Workbox (generateSW); legacy injectManifest fallback in `src/service-worker.js` |
+
+## Storage Layer
+
+Introduced in Session 004 (see [ADR-003](./decisions/ADR-003-storage-layer.md)).
+Local persistence sits behind a single facade so `TodoStore` is unaware of the
+backend.
+
+```
+TodoStore
+   │  (via legacy wrapper src/lib/utils/storage.js during the transition)
+   ▼
+StorageFacade            src/lib/storage/storage.js
+   │  lazy single-flight init · backend selection · one-time migration
+   ▼
+StorageAdapter (contract) src/lib/storage/adapter.js  (JSDoc typedefs only)
+   ├── IndexedDBAdapter    src/lib/storage/indexeddb.js   (primary; atomic writes)
+   └── LocalStorageAdapter src/lib/storage/local-storage.js (fallback)
+```
+
+- **Facade contract:** `loadState()`, `saveState(state)`, `clear()`. Stable;
+  evolves additively without breaking callers.
+- **Backend selection:** IndexedDB when available, otherwise localStorage.
+- **Migration:** on first IndexedDB init, legacy localStorage state is migrated
+  once — idempotent, integrity-verified (task count + every id), and the legacy
+  payload is never deleted.
+- **Persistence model:** whole-state snapshots (intentionally temporary).
+- **Scope:** local persistence only — no networking, sync, or service-worker
+  concerns (mirrors the SW/Storage independence in ADR-002).
+
+The storage layer does **not** yet make local state the source of truth: `TodoStore`
+still reads server-first and falls back to local storage. That inversion, the
+repository above the facade, and the evolution of the persistence model beneath it
+are planned for later sessions.
 
 ## Future Architecture Changes
 
