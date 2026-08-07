@@ -41,6 +41,18 @@ class AuthStore {
 		this.user = await res.json();
 	}
 
+	async changePassword(currentPassword, newPassword) {
+		const res = await fetch('/api/auth/change-password', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ currentPassword, newPassword })
+		});
+		if (!res.ok) {
+			const data = await res.json();
+			throw new Error(data.error || 'Failed to change password');
+		}
+	}
+
 	async logout() {
 		await fetch('/api/auth/logout', { method: 'POST' });
 		this.user = null;

@@ -14,10 +14,12 @@
 	import FAB from '$lib/components/FAB.svelte';
 	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
+	import ChangePasswordModal from '$lib/components/ChangePasswordModal.svelte';
 
 	let ready = $state(false);
 	let showAdd = $state(false);
 	let sidebarOpen = $state(false);
+	let changePasswordOpen = $state(false);
 	/** @type {import('$lib/stores/todoStore.svelte.js').Task|null} */
 	let editing = $state(null);
 	/** @type {import('$lib/stores/todoStore.svelte.js').Task|null} */
@@ -120,7 +122,11 @@
 	<Loader />
 {:else if auth.user}
 	<div class="app">
-		<Header onnew={() => (showAdd = true)} ontogglesidebar={() => (sidebarOpen = !sidebarOpen)} />
+		<Header
+				onnew={() => (showAdd = true)}
+				ontogglesidebar={() => (sidebarOpen = !sidebarOpen)}
+				onchangepassword={() => (changePasswordOpen = true)}
+			/>
 
 		<div class="body">
 			<Sidebar open={sidebarOpen} onclose={() => (sidebarOpen = false)} />
@@ -146,6 +152,10 @@
 
 	<AddTaskForm bind:open={showAdd} />
 	<EditTaskModal task={editing} onclose={() => (editing = null)} onrequestdelete={requestDelete} />
+	<ChangePasswordModal
+		bind:open={changePasswordOpen}
+		onclose={() => (changePasswordOpen = false)}
+	/>
 	<ConfirmDialog
 		open={!!pendingDelete}
 		title="Delete task?"

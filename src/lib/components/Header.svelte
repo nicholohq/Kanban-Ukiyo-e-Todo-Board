@@ -1,9 +1,23 @@
 <script>
 	import { todoStore } from '$lib/stores/todoStore.svelte.js';
+	import { auth } from '$lib/stores/auth.svelte.js';
+	import { goto } from '$app/navigation';
 	import ViewToggle from './ViewToggle.svelte';
 
-	/** @type {{ onnew?: () => void, ontogglesidebar?: () => void }} */
-	let { onnew, ontogglesidebar } = $props();
+	/** @type {{ onnew?: () => void, ontogglesidebar?: () => void, onchangepassword?: () => void }} */
+	let { onnew, ontogglesidebar, onchangepassword } = $props();
+
+	let menuOpen = $state(false);
+
+	function toggleMenu() {
+		menuOpen = !menuOpen;
+	}
+
+	async function handleLogout() {
+		menuOpen = false;
+		await auth.logout();
+		goto('/login');
+	}
 
 	let q = $state(todoStore.filters.search);
 	// Last value this input committed to the store — lets us tell our own
@@ -91,6 +105,37 @@
 		<button class="btn btn--primary" onclick={onnew}>
 			<span aria-hidden="true">＋</span> New task
 		</button>
+
+		<div class="user-menu">
+			<button
+				class="user-btn"
+				onclick={toggleMenu}
+				aria-haspopup="true"
+				aria-expanded={menuOpen}
+				title="Account"
+			>
+				<span class="user-avatar" aria-hidden="true">{auth.user?.username?.charAt(0).toUpperCase() ?? '?'}</span>
+				<span class="user-name">{auth.user?.username ?? ''}</span>
+				<span class="user-caret" aria-hidden="true">▾</span>
+			</button>
+
+			{#if menuOpen}
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+				<div
+					class="menu-backdrop"
+					onclick={toggleMenu}
+					onkeydown={(e) => e.key === 'Escape' && toggleMenu()}
+				></div>
+				<div class="menu panel" role="menu">
+					<button role="menuitem" onclick={() => { menuOpen = false; onchangepassword?.(); }}>
+						<span aria-hidden="true">🔑</span> Change Password
+					</button>
+					<button role="menuitem" class="danger" onclick={handleLogout}>
+						<span aria-hidden="true">⏻</span> Log Out
+					</button>
+				</div>
+			{/if}
+		</div>
 	</div>
 </header>
 
@@ -178,6 +223,83 @@
 		align-items: center;
 		gap: var(--s2);
 	}
+	.user-menu {
+		position: relative;
+	}
+	.user-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--s2);
+		padding: var(--s1) var(--s2);
+		border: 2px solid var(--linen);
+		border-radius: var(--radius);
+		background: transparent;
+		color: var(--linen);
+		font-family: var(--gothic);
+		font-size: 0.85rem;
+		font-weight: 700;
+		cursor: pointer;
+		transition: background var(--ease);
+	}
+	.user-btn:hover {
+		background: rgba(255, 255, 255, 0.12);
+	}
+	.user-avatar {
+		display: inline-grid;
+		place-items: center;
+		width: 26px;
+		height: 26px;
+		border-radius: 50%;
+		background: var(--vermilion);
+		color: var(--linen);
+		font-size: 0.8rem;
+		font-weight: 700;
+	}
+	.user-caret {
+		font-size: 0.7rem;
+		opacity: 0.7;
+	}
+	.menu-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 10;
+	}
+	.menu {
+		position: absolute;
+		top: calc(100% + var(--s2));
+		right: 0;
+		z-index: var(--z-context-menu);
+		min-width: 180px;
+		padding: var(--s1);
+		display: flex;
+		flex-direction: column;
+	}
+	.menu button {
+		display: flex;
+		align-items: center;
+		gap: var(--s2);
+		width: 100%;
+		text-align: left;
+		padding: var(--s2) var(--s3);
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		font-family: var(--gothic);
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--charcoal);
+		cursor: pointer;
+	}
+	.menu button:hover {
+		background: var(--linen-2);
+	}
+	.menu button.danger {
+		color: var(--vermilion);
+	}
+	.menu button.danger:hover {
+		background: var(--vermilion);
+		color: var(--linen);
+	}
 
 	@media (max-width: 1024px) {
 		.hamburger {
@@ -198,6 +320,9 @@
 		}
 		.actions .btn :global(span) {
 			margin: 0;
+		}
+		.user-name {
+			display: none;
 		}
 	}
 </style>
