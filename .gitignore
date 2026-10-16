@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 
 .vercel
 .env*
+
+# Local agent scratch (brainstorm mockups, working notes)
+.superpowers/
