@@ -1,8 +1,10 @@
 <script>
 	import { notesStore } from '$lib/stores/notesStore.svelte.js';
+	import { todoStore } from '$lib/stores/todoStore.svelte.js';
 	import { sanitizeFilename, noteToTxt } from '$lib/utils/notes.js';
 	import NoteTabs from './NoteTabs.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import SendToBoardPanel from './SendToBoardPanel.svelte';
 
 	/** Task 7 reads the selection from this element (selectionStart/End). */
 	/** @type {HTMLTextAreaElement|null} */
@@ -14,6 +16,11 @@
 
 	/** @type {import('$lib/utils/notes.js').Note|null} */
 	let pendingDelete = $state(null);
+
+	/** The docked Send-to-board panel: whether it is open, and the highlight
+	 * captured at the moment Send was pressed. */
+	let sendOpen = $state(false);
+	let sendSeed = $state('');
 
 	let syncText = $derived(
 		notesStore.syncStatus === 'saving' || notesStore.syncStatus === 'loading'
@@ -113,6 +120,36 @@
 		a.remove();
 		URL.revokeObjectURL(url);
 	}
+
+	/**
+	 * The textarea's current selection. Read on demand — the note's selection
+	 * survives the textarea losing focus, so this still works while the panel
+	 * (which holds focus) is open.
+	 * @returns {string}
+	 */
+	function selection() {
+		if (!textareaEl) return '';
+		return textareaEl.value.slice(textareaEl.selectionStart, textareaEl.selectionEnd);
+	}
+
+	function openSend() {
+		sendSeed = selection();
+		sendOpen = true;
+	}
+
+	/**
+	 * Create a card from the panel's data. The note is read only for its name,
+	 * which rides along as a tag; the note itself is never edited.
+	 * @param {{ title: string, description: string, status: import('$lib/stores/todoStore.svelte.js').Status }} data
+	 * @returns {boolean} false when the store could not create the card
+	 */
+	function submitCard(data) {
+		const note = notesStore.activeNote;
+		const task = todoStore.addTask({ ...data, tags: note ? [note.title] : [] });
+		if (!task) return false; // empty or duplicate title — the panel shows why
+		sendOpen = false;
+		return true;
+	}
 </script>
 
 <section class="notepad">
@@ -143,13 +180,26 @@
 			value={notesStore.activeNote?.body ?? ''}
 			oninput={onInput}
 		></textarea>
-		<div class="tools">
-			<button class="btn btn--sm" onclick={exportTxt} disabled={!notesStore.activeNote}>
-				<span aria-hidden="true">⇩</span> Export .txt
-			</button>
-			<!-- Task 7 adds the Send-to-board button here. -->
-			<p class="sync" aria-live="polite">{syncText}</p>
-		</div>
+		{#if sendOpen}
+			<SendToBoardPanel
+				open={sendOpen}
+				seed={sendSeed}
+				getSelection={selection}
+				isDuplicate={(t) => todoStore.hasDuplicateTitle(t)}
+				onsubmit={submitCard}
+				onclose={() => (sendOpen = false)}
+			/>
+		{:else}
+			<div class="tools">
+				<button class="btn btn--sm" onclick={openSend} disabled={!notesStore.activeNote}>
+					<span aria-hidden="true">→</span> Send to board
+				</button>
+				<button class="btn btn--sm" onclick={exportTxt} disabled={!notesStore.activeNote}>
+					<span aria-hidden="true">⇩</span> Export .txt
+				</button>
+				<p class="sync" aria-live="polite">{syncText}</p>
+			</div>
+		{/if}
 	{/if}
 </section>
 
