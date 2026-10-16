@@ -21,6 +21,15 @@
 	>
 		<span aria-hidden="true">☰</span> List
 	</button>
+	<button
+		type="button"
+		class="vt-btn"
+		class:active={todoStore.view === 'notes'}
+		aria-pressed={todoStore.view === 'notes'}
+		onclick={() => todoStore.setView('notes')}
+	>
+		<span aria-hidden="true">✎</span> Notes
+	</button>
 </div>
 
 <style>

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { auth } from '$lib/stores/auth.svelte.js';
 	import { todoStore } from '$lib/stores/todoStore.svelte.js';
+	import { notesStore } from '$lib/stores/notesStore.svelte.js';
 	import { goto } from '$app/navigation';
 	import Header from '$lib/components/Header.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
@@ -11,6 +12,7 @@
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import TaskList from '$lib/components/TaskList.svelte';
 	import KanbanBoard from '$lib/components/KanbanBoard.svelte';
+	import NotepadView from '$lib/components/NotepadView.svelte';
 	import FAB from '$lib/components/FAB.svelte';
 	import ContextMenu from '$lib/components/ContextMenu.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
@@ -92,6 +94,10 @@
 			goto('/login');
 			return;
 		}
+		// Notes first: the writer arms at the end of todoStore.init() and its
+		// guarded effect snapshots notesStore.notes at that moment, so the notes
+		// must already be in memory. Nothing in notesStore.init() needs todoStore.
+		await notesStore.init();
 		await todoStore.init();
 		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const t = setTimeout(() => (ready = true), reduce ? 0 : 450);
@@ -138,13 +144,15 @@
 						onnew={() => (showAdd = true)}
 						oncontextmenu={openContextMenu}
 					/>
-				{:else}
+				{:else if todoStore.view === 'list'}
 					<TaskList
 						onedit={(t) => (editing = t)}
 						ondelete={requestDelete}
 						onnew={() => (showAdd = true)}
 						oncontextmenu={openContextMenu}
 					/>
+				{:else}
+					<NotepadView />
 				{/if}
 			</main>
 		</div>

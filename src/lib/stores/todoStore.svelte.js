@@ -28,6 +28,8 @@ import { loadState, saveState } from '$lib/utils/storage.js';
 import { createSeedTasks } from '$lib/utils/seedData.js';
 import { emptyFilters, filterTasks, collectTags, countBy } from '$lib/utils/filters.js';
 import { toasts } from '$lib/stores/toasts.svelte.js';
+import { notesStore } from '$lib/stores/notesStore.svelte.js';
+import { normalizeView } from '$lib/utils/view.js';
 import { fetchTasks, createTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask, reorderTasks } from '$lib/utils/api.js';
 
 export const CATEGORIES = /** @type {Category[]} */ (['work', 'personal', 'study', 'other']);
@@ -64,10 +66,16 @@ class TodoStore {
 	/** @type {Task[]} */
 	tasks = $state([]);
 	filters = $state(emptyFilters());
-	/** @type {'list'|'board'} */
+	/** @type {'list'|'board'|'notes'} */
 	view = $state('board');
 	/** @type {'idle'|'loading'|'saving'|'saved'|'error'} */
 	saveStatus = $state('idle');
+
+	/**
+	 * Single-writer guard: the snapshot effect below must not fire until
+	 * `init()` has loaded real state, or it saves a blank snapshot over it.
+	 */
+	#ready = $state(false);
 
 	/** @type {ReturnType<typeof setTimeout>|null} */
 	#saveTimer = null;
@@ -113,10 +121,17 @@ class TodoStore {
 		if (browser) {
 			$effect.root(() => {
 				$effect(() => {
+					// Single writer, guarded: until `init()` has run, `tasks` is
+					// empty and `notesStore` is empty, so an unguarded effect would
+					// save a blank snapshot ~300 ms after mount and wipe the stored
+					// notes. This store is the one and only snapshot writer.
+					if (!this.#ready) return;
 					const snapshot = {
 						tasks: $state.snapshot(this.tasks),
 						filters: $state.snapshot(this.filters),
-						view: this.view
+						view: this.view,
+						notes: $state.snapshot(notesStore.notes),
+						activeNoteId: notesStore.activeNoteId
 					};
 					this.#scheduleSave(snapshot);
 				});
@@ -127,27 +142,34 @@ class TodoStore {
 	/** Fetch tasks from the server, falling back to localStorage. */
 	async init() {
 		this.saveStatus = 'loading';
+		const persisted = browser ? await loadState() : null;
 		try {
 			const tasks = await fetchTasks();
 			if (Array.isArray(tasks)) {
 				this.tasks = tasks;
 			}
 		} catch {
-			const persisted = browser ? await loadState() : null;
 			if (persisted && Array.isArray(persisted.tasks)) {
 				this.tasks = persisted.tasks;
 				if (persisted.filters) this.filters = { ...emptyFilters(), ...persisted.filters };
-				this.view = persisted.view === 'list' ? 'list' : 'board';
 			} else {
 				this.tasks = createSeedTasks(makeId);
 			}
 		}
+		// Applied on every load, not only offline: the spec promises the app
+		// reopens on the view you left it on.
+		this.view = normalizeView(persisted?.view);
 		this.saveStatus = 'idle';
+		// Last statement: arming the writer re-runs the guarded effect so it
+		// snapshots the real state just assigned. If the load above threw the
+		// writer stays disarmed — the safe direction, as a session that cannot
+		// read its own data must not overwrite it.
+		this.#ready = true;
 	}
 
 	// ---- Persistence --------------------------------------------------------
 
-	/** @param {{tasks:any[],filters:any,view:string}} snapshot */
+	/** @param {{tasks:any[],filters:any,view:string,notes:any[],activeNoteId:string|null}} snapshot */
 	#scheduleSave(snapshot) {
 		if (this.#saveTimer) clearTimeout(this.#saveTimer);
 		this.saveStatus = 'saving';
@@ -383,7 +405,7 @@ class TodoStore {
 		this.filters = emptyFilters();
 	}
 
-	/** @param {'list'|'board'} view */
+	/** @param {'list'|'board'|'notes'} view */
 	setView(view) {
 		this.view = view;
 	}
