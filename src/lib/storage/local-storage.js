@@ -2,12 +2,13 @@
  * localStorage adapter — preserves the exact behaviour of the original
  * `utils/storage.js` implementation, wrapped in a StorageAdapter class.
  *
- * The whole app state (tasks + filters + view) is serialised under a single
- * key. A version number is stored alongside so future shape changes can be
- * migrated instead of silently corrupting data.
+ * The whole app state (tasks + notes + filters + view) is serialised under a
+ * single key. A version number is stored alongside so future shape changes can
+ * be migrated instead of silently corrupting data.
  */
 
 import { STORAGE_KEY, STORAGE_VERSION } from './schema.js';
+import { normalizeView } from '../utils/view.js';
 
 /**
  * @implements {import('./adapter.js').StorageAdapter}
@@ -70,7 +71,9 @@ export class LocalStorageAdapter {
 				version: STORAGE_VERSION,
 				tasks: Array.isArray(data.tasks) ? data.tasks : [],
 				filters: data.filters ?? null,
-				view: data.view === 'list' ? 'list' : 'board'
+				view: normalizeView(data.view),
+				notes: Array.isArray(data.notes) ? data.notes : [],
+				activeNoteId: data.activeNoteId ?? null
 			};
 		} catch (err) {
 			console.warn('[storage] failed to load state:', err);
@@ -90,7 +93,9 @@ export class LocalStorageAdapter {
 				version: STORAGE_VERSION,
 				tasks: state.tasks,
 				filters: state.filters,
-				view: state.view
+				view: state.view,
+				notes: state.notes ?? [],
+				activeNoteId: state.activeNoteId ?? null
 			});
 			localStorage.setItem(STORAGE_KEY, payload);
 			return { ok: true };

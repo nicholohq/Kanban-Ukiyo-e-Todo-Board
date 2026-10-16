@@ -3,7 +3,7 @@ import { IndexedDBAdapter } from '../src/lib/storage/indexeddb.js';
 import { LocalStorageAdapter } from '../src/lib/storage/local-storage.js';
 import { migrateFromLocalStorage, isIndexedDBAvailable } from '../src/lib/storage/migration.js';
 import { STORAGE_KEY, STORAGE_VERSION } from '../src/lib/storage/schema.js';
-import { makeTasks } from './fixtures.js';
+import { sampleState, makeTasks, makeNotes } from './fixtures.js';
 
 /** Seed the legacy localStorage payload the way the original app wrote it. */
 function seedLegacy(tasks) {
@@ -79,6 +79,23 @@ describe('migrateFromLocalStorage', () => {
 		await migrateFromLocalStorage(idb, new LocalStorageAdapter());
 
 		expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+	});
+
+	test('is undisturbed by notes already persisted in IndexedDB', async () => {
+		seedLegacy(makeTasks(2));
+		const idb = await freshIdb();
+
+		// Complete the migration once, then persist notes on top of it.
+		await migrateFromLocalStorage(idb, new LocalStorageAdapter());
+		await idb.saveState({ ...sampleState(2, 'notes', makeNotes(2)) });
+
+		// A later run short-circuits on the recorded metadata and must leave the
+		// notes untouched.
+		const result = await migrateFromLocalStorage(idb, new LocalStorageAdapter());
+		expect(result).toMatchObject({ ok: true });
+
+		const state = await idb.loadState();
+		expect(state?.notes.map((n) => n.id)).toEqual(['n0', 'n1']);
 	});
 });
 

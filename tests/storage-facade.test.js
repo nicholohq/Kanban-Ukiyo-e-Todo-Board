@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { STORAGE_VERSION } from '../src/lib/storage/schema.js';
-import { sampleState, makeTasks } from './fixtures.js';
+import { sampleState, makeTasks, makeNotes } from './fixtures.js';
 
 // The facade is a module-level singleton. Reset the module registry before each
 // test so every test observes a fresh, uninitialised facade.
@@ -36,6 +36,15 @@ describe('StorageFacade', () => {
 		const loaded = await storage.loadState();
 		expect(loaded?.tasks).toHaveLength(2);
 		expect(loaded?.view).toBe('list');
+	});
+
+	test('carries notes and the active note through the facade', async () => {
+		const { storage } = await import('../src/lib/storage/storage.js');
+		await storage.saveState({ ...sampleState(1, 'notes', makeNotes(2)), activeNoteId: 'n1' });
+
+		const loaded = await storage.loadState();
+		expect(loaded?.notes.map((n) => n.id)).toEqual(['n0', 'n1']);
+		expect(loaded?.activeNoteId).toBe('n1');
 	});
 
 	test('clear() empties persisted state', async () => {

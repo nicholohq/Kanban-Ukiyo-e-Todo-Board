@@ -31,7 +31,9 @@
  * @property {number} version
  * @property {import('$lib/stores/todoStore.svelte.js').Task[]} tasks
  * @property {import('$lib/utils/filters.js').Filters|null} filters
- * @property {'list'|'board'} view
+ * @property {'list'|'board'|'notes'} view
+ * @property {import('$lib/utils/notes.js').Note[]} notes
+ * @property {string|null} activeNoteId
  */
 
 /**

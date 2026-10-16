@@ -9,8 +9,8 @@
 /** IndexedDB database name. */
 export const DB_NAME = 'ukiyo-kanban';
 
-/** IndexedDB version — increment when the object store set changes. */
-export const DB_VERSION = 1;
+/** IndexedDB version — increment when the object store set changes (v2 added notes). */
+export const DB_VERSION = 2;
 
 /** localStorage key (kept for backward compatibility). */
 export const STORAGE_KEY = 'ukiyo-kanban';
@@ -22,5 +22,6 @@ export const STORAGE_VERSION = 1;
 export const STORES = Object.freeze({
 	TASKS: 'tasks',
 	SETTINGS: 'settings',
-	METADATA: 'metadata'
+	METADATA: 'metadata',
+	NOTES: 'notes'
 });

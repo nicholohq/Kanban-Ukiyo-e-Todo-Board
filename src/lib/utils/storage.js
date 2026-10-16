@@ -32,7 +32,9 @@ export async function saveState(state) {
 		version: STORAGE_VERSION,
 		tasks: state.tasks,
 		filters: state.filters,
-		view: state.view
+		view: state.view,
+		notes: state.notes ?? [],
+		activeNoteId: state.activeNoteId ?? null
 	});
 }
 

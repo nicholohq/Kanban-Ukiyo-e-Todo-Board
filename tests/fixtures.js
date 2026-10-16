@@ -25,16 +25,35 @@ export function makeTasks(n) {
 }
 
 /**
+ * Build `n` deterministic notes matching the Note shape.
+ * @param {number} n
+ * @returns {import('../src/lib/utils/notes.js').Note[]}
+ */
+export function makeNotes(n) {
+	return Array.from({ length: n }, (_, i) => ({
+		id: `n${i}`,
+		title: `Note ${i}`,
+		body: `Body ${i}`,
+		position: i,
+		createdAt: i,
+		updatedAt: i
+	}));
+}
+
+/**
  * A complete PersistedState with `n` tasks.
  * @param {number} [n]
- * @param {'list'|'board'} [view]
+ * @param {'list'|'board'|'notes'} [view]
+ * @param {import('../src/lib/utils/notes.js').Note[]} [notes]
  * @returns {import('../src/lib/storage/adapter.js').PersistedState}
  */
-export function sampleState(n = 2, view = 'board') {
+export function sampleState(n = 2, view = 'board', notes = []) {
 	return {
 		version: STORAGE_VERSION,
 		tasks: makeTasks(n),
 		filters: null,
-		view
+		view,
+		notes,
+		activeNoteId: null
 	};
 }

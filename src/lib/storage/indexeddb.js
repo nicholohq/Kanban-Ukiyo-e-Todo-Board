@@ -3,15 +3,17 @@
  *
  * Stores:
  *  - tasks     (primary key: id, indexed by status/category/priority)
- *  - settings  (key: key  — filters, view)
+ *  - settings  (key: key  — filters, view, activeNoteId)
  *  - metadata  (key: key  — migration status)
+ *  - notes     (primary key: id)
  *
- * `saveState()` commits tasks + settings in a single atomic readwrite
+ * `saveState()` commits tasks + notes + settings in a single atomic readwrite
  * transaction: if any write fails, nothing is committed.
  */
 
 import { openDB } from 'idb';
 import { DB_NAME, DB_VERSION, STORES } from './schema.js';
+import { normalizeView } from '../utils/view.js';
 
 /**
  * @implements {import('./adapter.js').StorageAdapter}
@@ -41,14 +43,23 @@ export class IndexedDBAdapter {
 		if (this.#db) return;
 		try {
 			this.#db = await openDB(DB_NAME, DB_VERSION, {
-				upgrade(db) {
-					const taskStore = db.createObjectStore(STORES.TASKS, { keyPath: 'id' });
-					taskStore.createIndex('status', 'status');
-					taskStore.createIndex('category', 'category');
-					taskStore.createIndex('priority', 'priority');
+				// Re-creating a store that already exists throws ConstraintError, and a
+				// version bump re-enters `upgrade` for databases that already exist — so
+				// each group is created only when the opening version predates it.
+				upgrade(db, oldVersion) {
+					if (oldVersion < 1) {
+						const taskStore = db.createObjectStore(STORES.TASKS, { keyPath: 'id' });
+						taskStore.createIndex('status', 'status');
+						taskStore.createIndex('category', 'category');
+						taskStore.createIndex('priority', 'priority');
 
-					db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
-					db.createObjectStore(STORES.METADATA, { keyPath: 'key' });
+						db.createObjectStore(STORES.SETTINGS, { keyPath: 'key' });
+						db.createObjectStore(STORES.METADATA, { keyPath: 'key' });
+					}
+
+					if (oldVersion < 2) {
+						db.createObjectStore(STORES.NOTES, { keyPath: 'id' });
+					}
 				}
 			});
 			this.#available = true;
@@ -66,13 +77,17 @@ export class IndexedDBAdapter {
 		if (!this.#db) return null;
 		try {
 			const tasks = await this.#db.getAll(STORES.TASKS);
+			const notes = await this.#db.getAll(STORES.NOTES);
 			const filtersRec = await this.#db.get(STORES.SETTINGS, 'filters');
 			const viewRec = await this.#db.get(STORES.SETTINGS, 'view');
+			const activeNoteRec = await this.#db.get(STORES.SETTINGS, 'activeNoteId');
 			return {
 				version: DB_VERSION,
 				tasks,
 				filters: filtersRec?.value ?? null,
-				view: viewRec?.value === 'list' ? 'list' : 'board'
+				view: normalizeView(viewRec?.value),
+				notes,
+				activeNoteId: activeNoteRec?.value ?? null
 			};
 		} catch (err) {
 			console.warn('[indexeddb] failed to load state:', err);
@@ -81,24 +96,28 @@ export class IndexedDBAdapter {
 	}
 
 	/**
-	 * Persist the complete state atomically — tasks + settings in one
+	 * Persist the complete state atomically — tasks + notes + settings in one
 	 * readwrite transaction.
 	 * @param {import('./adapter.js').PersistedState} state
 	 * @returns {Promise<import('./adapter.js').StorageResult>}
 	 */
 	async saveState(state) {
 		if (!this.#db) return { ok: false, reason: 'unavailable' };
-		const tx = this.#db.transaction([STORES.TASKS, STORES.SETTINGS], 'readwrite');
+		const tx = this.#db.transaction([STORES.TASKS, STORES.SETTINGS, STORES.NOTES], 'readwrite');
 		try {
 			const tasksStore = tx.objectStore(STORES.TASKS);
 			const settingsStore = tx.objectStore(STORES.SETTINGS);
+			const notesStore = tx.objectStore(STORES.NOTES);
 
 			// Queue every write synchronously so the browser keeps the
 			// transaction alive until tx.done—guaranteeing all-or-nothing.
 			tasksStore.clear();
 			for (const task of state.tasks) tasksStore.put(task);
+			notesStore.clear();
+			for (const note of state.notes ?? []) notesStore.put(note);
 			settingsStore.put({ key: 'filters', value: state.filters });
 			settingsStore.put({ key: 'view', value: state.view });
+			settingsStore.put({ key: 'activeNoteId', value: state.activeNoteId ?? null });
 
 			await tx.done;
 			return { ok: true };
@@ -119,17 +138,18 @@ export class IndexedDBAdapter {
 		}
 	}
 
-	/** Remove all persisted data across tasks, settings and metadata. */
+	/** Remove all persisted data across tasks, notes, settings and metadata. */
 	async clear() {
 		if (!this.#db) return;
 		try {
 			const tx = this.#db.transaction(
-				[STORES.TASKS, STORES.SETTINGS, STORES.METADATA],
+				[STORES.TASKS, STORES.SETTINGS, STORES.METADATA, STORES.NOTES],
 				'readwrite'
 			);
 			tx.objectStore(STORES.TASKS).clear();
 			tx.objectStore(STORES.SETTINGS).clear();
 			tx.objectStore(STORES.METADATA).clear();
+			tx.objectStore(STORES.NOTES).clear();
 			await tx.done;
 		} catch (err) {
 			console.warn('[indexeddb] failed to clear:', err);
