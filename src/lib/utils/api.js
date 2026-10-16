@@ -37,3 +37,43 @@ export async function reorderTasks(column, taskIds) {
 	});
 	if (!res.ok) throw new Error('Failed to reorder tasks');
 }
+
+export async function fetchNotes() {
+	const res = await fetch('/api/notes');
+	if (!res.ok) throw new Error('Failed to fetch notes');
+	return res.json();
+}
+
+export async function createNote(note) {
+	const res = await fetch('/api/notes', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(note)
+	});
+	if (!res.ok) throw new Error('Failed to create note');
+	return res.json();
+}
+
+export async function updateNote(id, patch) {
+	const res = await fetch(`/api/notes/${id}`, {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(patch)
+	});
+	if (!res.ok) throw new Error('Failed to update note');
+	return res.json();
+}
+
+export async function deleteNote(id) {
+	const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+	if (!res.ok) throw new Error('Failed to delete note');
+}
+
+export async function reorderNotes(noteIds) {
+	const res = await fetch('/api/notes/reorder', {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ noteIds })
+	});
+	if (!res.ok) throw new Error('Failed to reorder notes');
+}
