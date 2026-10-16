@@ -11,8 +11,9 @@ persistence** via Turso (edge SQLite).
 
 ## Features
 
-- **Two views** — a drag-and-drop **Kanban board** (To Do / In Progress / Done)
-  and a sortable, grouped **List view**.
+- **Three views** — a drag-and-drop **Kanban board** (To Do / In Progress / Done),
+  a sortable, grouped **List view**, and a per-subject **Notes** notepad with
+  named tabs, a docked send-to-board flow and `.txt` export.
 - **Full CRUD** — create, edit, delete tasks with title, description, priority,
   category, tags, due date and status.
 - **Drag & drop** — move cards between columns (mouse, touch and keyboard) via

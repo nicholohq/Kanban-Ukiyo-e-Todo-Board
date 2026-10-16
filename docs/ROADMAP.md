@@ -66,7 +66,7 @@ Full offline capability with robust sync.
 
 ---
 
-## v1.5 — Productivity 📝
+## v1.5 — Productivity 🚧
 
 Power user features for daily task management.
 

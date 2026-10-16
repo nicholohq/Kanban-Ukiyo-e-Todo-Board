@@ -99,8 +99,10 @@
   **merge** by id — the newer `updatedAt` per note wins, and a local-only note
   is kept rather than replaced. A failed fetch passes `[]`, which the merge
   reads as "keep everything local". Nothing is pushed to the server during
-  load; a local-only or locally-newer note reaches the server the next time it
-  is edited.
+  load: a locally-newer note that **has a server row** is `PATCH`ed on the next
+  edit, while a note created while the server was unreachable has no server row
+  and so cannot reach the server that way — it stays local-only, its text and
+  IndexedDB snapshot safe (ADR-004; `session-005.md` Accepted Limitations).
 - This is the deliberate divergence from tasks: tasks **replace** local state
   with the server copy (server-first), notes **merge** with it.
 

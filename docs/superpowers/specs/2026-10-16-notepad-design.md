@@ -303,6 +303,17 @@ turn — the fastest way to lose a paragraph.
   same note, the newer copy wins and the older is discarded — real conflict resolution
   is v1.4.
 
+  > **Flush corrected — 2026-10-16.** The shipped flush is `PATCH`-only
+  > (`updateNote`, `notesStore.svelte.js`), one call per pending note, so the
+  > paragraph above holds only for a note that already has a server row: a
+  > locally-newer such note does reach the server on its next edit. A note
+  > **created** while the server was unreachable has no server row, so its
+  > `PATCH` returns 404 and it stays local-only — nothing is lost locally (the
+  > text and the IndexedDB snapshot survive). §7's row 10 therefore holds for a
+  > failed *update* but not a failed *create*. Recorded as an accepted limitation
+  > in `docs/progress/session-005.md` (Accepted Limitations) and in the Negative
+  > consequences of `docs/decisions/ADR-004-notepad-persistence.md`.
+
   Tasks keep their existing server-first behaviour. The divergence is deliberate and is
   one of the two items §9.4 puts in front of the Architecture Authority.
 

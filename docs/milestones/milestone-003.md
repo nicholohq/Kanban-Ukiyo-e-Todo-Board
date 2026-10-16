@@ -108,9 +108,11 @@ Product Owner and the Architecture Authority.
 - [x] docs/decisions/ADR-004-notepad-persistence.md + INDEX.md
 - [x] docs/progress/session-005.md
 - [x] docs/CHANGELOG.md, docs/ARCHITECTURE_OVERVIEW.md, docs/ROADMAP.md
-- [ ] Root README.md updated if user-facing — **not done.** Its Features list still
-  says "Two views" and does not mention the notepad. The README is outside this
-  task's committed file list, so it was left untouched; flagged as a follow-up.
+- [x] Root README.md updated if user-facing — **done.** Its Features list now
+  reads "Three views" and names the Notes notepad (named tabs, send-to-board,
+  `.txt` export). The README was outside the original committed file list, so it
+  was flagged as a follow-up during Task 8 and corrected in the fix round that
+  followed.
 
 ## Retrospective
 
