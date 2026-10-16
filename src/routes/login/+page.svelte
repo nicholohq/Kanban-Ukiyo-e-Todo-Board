@@ -1,6 +1,7 @@
 <script>
 	import { auth } from '$lib/stores/auth.svelte.js';
 	import { todoStore } from '$lib/stores/todoStore.svelte.js';
+	import { notesStore } from '$lib/stores/notesStore.svelte.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -26,6 +27,10 @@
 			} else {
 				await auth.signup(username, password);
 			}
+			// Notes first: the writer arms at the end of todoStore.init() and its
+			// guarded effect snapshots notesStore.notes at that moment, so the notes
+			// must already be in memory. Nothing in notesStore.init() needs todoStore.
+			await notesStore.init();
 			await todoStore.init();
 			goto('/');
 		} catch (err) {
