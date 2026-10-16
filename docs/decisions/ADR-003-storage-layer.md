@@ -149,3 +149,11 @@ callers import the facade directly.
 
 The specific shape of that Session 006 evolution is intentionally deferred until
 the operation model is designed, and is not decided here.
+
+> **Session numbering amended — 2026-10-16.** The notepad feature took the
+> Session 005 slot, so the sessions named in the bullets above have moved: the
+> repository and local-first inversion are now **Session 006**, the
+> `TodoStore`/repository tests follow at **006.5**, and the operation-based
+> persistence evolution is **Session 007**. Nothing in the decisions above
+> changed — only the numbers that referenced them. The notepad's own persistence
+> decisions are recorded in ADR-004.

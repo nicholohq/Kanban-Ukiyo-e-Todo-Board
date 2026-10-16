@@ -59,6 +59,7 @@ Touch-first interactions and mobile polish.
 Full offline capability with robust sync.
 
 - [✓] IndexedDB storage migration (Session 004 — StorageFacade + adapters, ADR-003)
+- [📝] Local-first inversion + repository above the facade (Session 006 — see ADR-003)
 - [📝] Sync queue for offline mutations
 - [📝] Background sync when online
 - [📝] Conflict resolution strategy
@@ -69,6 +70,7 @@ Full offline capability with robust sync.
 
 Power user features for daily task management.
 
+- [📝] Notepad (Notes view, named tabs, send to board) — Session 005
 - [📝] Quick Add (keyboard shortcut)
 - [📝] Smart Views (custom saved filters)
 - [📝] Recurring Tasks

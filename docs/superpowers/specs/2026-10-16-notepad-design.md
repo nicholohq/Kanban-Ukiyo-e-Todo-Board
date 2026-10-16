@@ -376,18 +376,20 @@ turn — the fastest way to lose a paragraph.
   `docs/ARCHITECTURE_OVERVIEW.md` (storage diagram + data flow),
   `docs/ROADMAP.md` / `docs/BACKLOG.md`, `docs/decisions/INDEX.md` + `ADR-004`,
   and `docs/features/` if this becomes a feature document.
-- The build must be its own session. It does not belong inside the in-flight v1.4
-  Offline First work: the roadmap has Session 005 earmarked for the repository and
-  local-first inversion, which this design deliberately avoids touching.
+- The build must be its own session — Session 005, roadmap v1.5. It does not belong
+  inside the in-flight v1.4 Offline First work: the repository and local-first inversion
+  are Session 006 (see the amendment at the foot of ADR-003), and this design
+  deliberately avoids touching them.
 
 ## 9. Open items for the Product Owner / Architecture Authority
 
-1. **Where does it sit?** Which roadmap version and session number this belongs to,
-   and whether it takes the Session 005 slot earmarked for local-first inversion.
+1. **Where does it sit? — resolved 2026-10-16.** Session 005, roadmap v1.5 —
+   Productivity. The repository and local-first inversion previously earmarked for
+   Session 005 move to Session 006, whose tests follow at 006.5.
 2. **Shared-device caching.** Local persistence is device-wide, not per-user — true
    today for tasks. With notes it means note text could be visible to a different
    account signing in offline on the same device. Accept it (consistent with tasks,
-   fixed by the planned repository work) or scope the notes cache to the user now?
+   fixed by the repository work in Session 006) or scope the notes cache to the user now?
 3. **How the "already sent" mark appears.** `❖` cannot be styled inside a plain
    `<textarea>`. Options: (a) a mirrored layer behind the textarea, so sent ranges are
    highlighted without altering the text; (b) no inline mark, instead a small "sent from
