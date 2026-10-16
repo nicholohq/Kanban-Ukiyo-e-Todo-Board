@@ -70,7 +70,7 @@ Full offline capability with robust sync.
 
 Power user features for daily task management.
 
-- [📝] Notepad (Notes view, named tabs, send to board) — Session 005
+- [✓] Notepad (Notes view, named tabs, send to board) — Session 005
 - [📝] Quick Add (keyboard shortcut)
 - [📝] Smart Views (custom saved filters)
 - [📝] Recurring Tasks

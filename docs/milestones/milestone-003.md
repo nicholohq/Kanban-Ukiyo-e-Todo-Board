@@ -11,29 +11,29 @@ Product Owner and the Architecture Authority.
 
 ## Deliverables
 
-- [ ] Notes as a third view alongside Board and List
-- [ ] `notesStore` holding note state and server sync, with `todoStore` as the single snapshot writer
-- [ ] Named tabs: create, rename, delete, reorder (drag and keyboard), active note remembered per device
-- [ ] `notes` object store at IndexedDB database v2, with a guarded upgrade for existing databases
-- [ ] `notes` table in the boot migration and `/api/notes` CRUD + reorder endpoints
-- [ ] Merge-on-load: the newer `updatedAt` per note wins, local-only notes are never dropped
-- [ ] Docked two-highlight send-to-board panel (title, then description; lands in To Do, tagged with the note's name)
-- [ ] `.txt` export of the open note
-- [ ] ADR-004: Notepad Persistence
-- [ ] Documentation (design spec, implementation plan, milestone, progress log)
+- [x] Notes as a third view alongside Board and List
+- [x] `notesStore` holding note state and server sync, with `todoStore` as the single snapshot writer
+- [x] Named tabs: create, rename, delete, reorder (drag and keyboard), active note remembered per device
+- [x] `notes` object store at IndexedDB database v2, with a guarded upgrade for existing databases
+- [x] `notes` table in the boot migration and `/api/notes` CRUD + reorder endpoints
+- [x] Merge-on-load: the newer `updatedAt` per note wins, local-only notes are never dropped
+- [x] Docked two-highlight send-to-board panel (title, then description; lands in To Do, tagged with the note's name)
+- [x] `.txt` export of the open note
+- [x] ADR-004: Notepad Persistence
+- [x] Documentation (design spec, implementation plan, milestone, progress log)
 
 ## Acceptance Criteria
 
-- [ ] `npm test` passes (58 tests once the storage and pure layers land)
-- [ ] `npm run check` passes
+- [x] `npm test` passes (58 tests once the storage and pure layers land)
+- [x] `npm run check` passes
 - [ ] All 13 rows of the design spec's manual test table pass
 - [ ] A note survives a reload, an offline reload, and an overnight gap
-- [ ] A v1 IndexedDB database upgrades to v2 without losing tasks
+- [x] A v1 IndexedDB database upgrades to v2 without losing tasks
 - [ ] Highlighting text and sending it creates a card without altering the note
 - [ ] An empty or duplicate card title is refused with the app's existing wording
 - [ ] Notes are absent from header search, filters, counts and the board
 - [ ] No regressions to authentication or task CRUD
-- [ ] Documentation updated (Definition of Done)
+- [x] Documentation updated (Definition of Done)
 
 ## Architecture Decisions
 
@@ -49,37 +49,74 @@ Product Owner and the Architecture Authority.
 
 - 2026-10-16: Design approved. Implementation plan written
   (`docs/superpowers/plans/2026-10-16-notepad.md`). Not started.
+- 2026-10-16: **Session 005 built the feature** across Tasks 1–7 (commits
+  `d93f2b2` … `200aa89`) and this task recorded it. `npm test` 58/58 across 7
+  files; `npm run check` 0 errors, 14 warnings (13 pre-existing plus the accepted
+  `state_referenced_locally` in `NoteTabs.svelte`); the hermetic `/api/notes`
+  probe passed all 15 checks against a throwaway `file:` database; all three Vite
+  build phases compiled (the build still fails at the pre-existing Windows
+  `adapter-vercel` EPERM symlink, so it was used only as a compile check).
+- **Deliverables are ticked because the implementation exists on this branch** —
+  established by the automated tests, the API probe, the type check and the
+  compile phase. **A row whose truth depends on a manual browser check the agent
+  did not run is deliberately left unticked.** The agent had no browser, so the
+  design spec's 13-row manual table and the mobile-width check are recorded
+  verbatim and unticked under **"Outstanding verification (human-required)"** in
+  `docs/progress/session-005.md`, and must be run by the human partner before the
+  milestone is considered behaviourally verified. The milestone is
+  **implementation-complete, not behaviourally verified** — the code being
+  finished is not the same as the behaviour being verified.
 
 ## Blockers
 
-- The ❖ "already sent" mark is undecided (design spec §9.3) — the feature ships
-  without it; a `<textarea>` cannot style a text range.
-- Local notes are cached device-wide rather than per-user (design spec §9.2), so
-  text can be visible to a different account signing in offline on the same
-  device. Consistent with tasks today; Session 006 is where it is fixed.
+- **Carried forward (undecided).** The ❖ "already sent" mark is undecided (design
+  spec §9.3) — the feature ships without it; a `<textarea>` cannot style a text
+  range. Options recorded in `session-005.md`; a small follow-up once one is
+  chosen.
+- **Carried forward to Session 006.** Local notes are cached device-wide rather
+  than per-user (design spec §9.2), so text can be visible to a different account
+  signing in offline on the same device. Consistent with tasks today; Session
+  006's repository work is where it is fixed.
+- **New, non-blocking follow-up.** `notesStore`'s flush only `PATCH`es, so a note
+  created while the server was unreachable never reaches the server (its later
+  `PATCH` returns 404). Nothing is lost locally. Candidate fix recorded under
+  Accepted Limitations in `session-005.md`.
 
 ## Lessons Learned
 
-*(Filled in after completion)*
+- The single-writer guard is order-sensitive: the writer arms at the end of
+  `todoStore.init()` and its effect reads `notesStore.notes`, so `notesStore.init()`
+  must run first — at the root page **and** at the login page. The plan's order was
+  reversed; the login call site was missed until review.
+- Trusting the client's note id (rather than minting one server-side) is what makes
+  merge-on-load stable; the follow-on is that `POST` had to become an idempotent
+  upsert so a retried create does not 500.
 
 ## Completion Checklist
 
-- [ ] src/lib/utils/notes.js
-- [ ] src/lib/utils/view.js
-- [ ] src/lib/storage/schema.js, indexeddb.js, local-storage.js, adapter.js, utils/storage.js
-- [ ] src/lib/server/migrate.js, schema.sql
-- [ ] src/routes/api/notes/* (+server.js, [id], reorder)
-- [ ] src/lib/utils/api.js
-- [ ] src/lib/stores/notesStore.svelte.js
-- [ ] src/lib/stores/todoStore.svelte.js
-- [ ] src/lib/components/NotepadView.svelte, NoteTabs.svelte, SendToBoardPanel.svelte, ViewToggle.svelte
-- [ ] src/routes/+page.svelte
-- [ ] tests/notes-utils.test.js, tests/view.test.js, tests/notes-storage.test.js, tests/fixtures.js
-- [ ] docs/decisions/ADR-004-notepad-persistence.md + INDEX.md
-- [ ] docs/progress/session-005.md
-- [ ] docs/CHANGELOG.md, docs/ARCHITECTURE_OVERVIEW.md, docs/ROADMAP.md
-- [ ] Root README.md updated if user-facing
+- [x] src/lib/utils/notes.js
+- [x] src/lib/utils/view.js
+- [x] src/lib/storage/schema.js, indexeddb.js, local-storage.js, adapter.js, utils/storage.js
+- [x] src/lib/server/migrate.js, schema.sql
+- [x] src/routes/api/notes/* (+server.js, [id], reorder)
+- [x] src/lib/utils/api.js
+- [x] src/lib/stores/notesStore.svelte.js
+- [x] src/lib/stores/todoStore.svelte.js
+- [x] src/lib/components/NotepadView.svelte, NoteTabs.svelte, SendToBoardPanel.svelte, ViewToggle.svelte
+- [x] src/routes/+page.svelte
+- [x] tests/notes-utils.test.js, tests/view.test.js, tests/notes-storage.test.js, tests/fixtures.js
+- [x] docs/decisions/ADR-004-notepad-persistence.md + INDEX.md
+- [x] docs/progress/session-005.md
+- [x] docs/CHANGELOG.md, docs/ARCHITECTURE_OVERVIEW.md, docs/ROADMAP.md
+- [ ] Root README.md updated if user-facing — **not done.** Its Features list still
+  says "Two views" and does not mention the notepad. The README is outside this
+  task's committed file list, so it was left untouched; flagged as a follow-up.
 
 ## Retrospective
 
-*(Filled in after completion)*
+- The feature was delivered as eight reviewed tasks; the two defects that reached
+  review (the init order at the login page, the two missing `SendToBoardPanel`
+  props) were both wiring slips rather than design failures, and both are fixed.
+- The verification the environment allows (tests, type check, compile, the API
+  probe) is green; the browser behaviour the design spec calls for is not verified
+  and is carried forward to the human partner.

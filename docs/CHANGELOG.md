@@ -17,6 +17,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - ADR-003: Storage Layer Architecture
 - Session progress-log template with mandatory transition-state sections (`docs/progress/TEMPLATE.md`)
 - Session 004 progress log
+- Notes view — a third view beside Board and List, with named tabs (create, rename, delete, reorder)
+- Docked two-highlight send-to-board flow (title, then description; new cards land in To Do, tagged with the note's name)
+- `.txt` export of the open note
+- `notes` table and `/api/notes` endpoints (`GET`/`POST`, `PATCH`/`DELETE`, `PUT /reorder`), with client-generated note ids
+- Notes persisted at IndexedDB database v2 (`notes` object store, guarded `oldVersion` upgrade)
+- ADR-004: Notepad Persistence
+- Session 005 progress log
 - Project philosophy and engineering principles documents
 - Engineering guide with AI collaboration rules
 - Architecture overview
@@ -37,6 +44,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `IndexedDBAdapter.saveState` hardened to abort the transaction on a synchronous write error, preserving the all-or-nothing guarantee (found via the new tests)
 - Architecture Overview reconciled to describe the implemented storage layer
 - Root README updated with Documentation section
+- `TodoStore` is now the single snapshot writer for tasks **and** notes; `notesStore` holds note state and server sync only
+- The persisted `view` is restored on load (previously an online load reset to Board)
+- `DB_VERSION` is now 2 (adds the `notes` object store behind a guarded upgrade)
 
 ---
 
