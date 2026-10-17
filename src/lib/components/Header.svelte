@@ -222,6 +222,10 @@
 		display: flex;
 		align-items: center;
 		gap: var(--s2);
+		/* Wrap rather than overflow the page. A no-op while the row fits (the
+		   desktop layout is unaffected); below ~600px the row's own floor —
+		   toggle + New task + account pill — is wider than the viewport. */
+		flex-wrap: wrap;
 	}
 	.user-menu {
 		position: relative;
@@ -315,12 +319,9 @@
 		.app-header {
 			padding: var(--s2) var(--s3);
 		}
-		/* Let the action row wrap, and give the view toggle a full-width row of
-		   its own, so its three segments stay comfortably wide at phone widths
-		   instead of being squeezed below their content. */
-		.actions {
-			flex-wrap: wrap;
-		}
+		/* The action row already wraps (see .actions); at phone widths give the
+		   view toggle a full-width row of its own so its three segments stay
+		   comfortably wide instead of being squeezed. */
 		.actions :global(.view-toggle) {
 			flex: 1 1 100%;
 		}
