@@ -122,7 +122,15 @@ class NotesStore {
 			for (const id of ids) {
 				const note = this.notes.find((n) => n.id === id);
 				if (!note) continue; // deleted during the debounce window
-				await updateNoteApi(id, { title: note.title, body: note.body });
+				const saved = await updateNoteApi(id, { title: note.title, body: note.body });
+				// Adopt the server's own timestamp. Keeping the client's
+				// `Date.now()` from the edit would leave the two sides comparing
+				// values from different clocks, and this client's could then win a
+				// merge it should lose the next time another device edits.
+				if (saved && Number.isFinite(Number(saved.updatedAt))) {
+					const stamp = Number(saved.updatedAt);
+					this.notes = this.notes.map((n) => (n.id === id ? { ...n, updatedAt: stamp } : n));
+				}
 			}
 		} catch {
 			this.syncStatus = 'error';
@@ -166,6 +174,11 @@ class NotesStore {
 	 */
 	renameNote(id, title) {
 		const clean = String(title ?? '').trim() || 'Untitled';
+		const current = this.notes.find((n) => n.id === id);
+		// An unchanged title is not an edit. Stamping one here would give this
+		// copy a client-side `updatedAt` the server never sees, which is how a
+		// stale local copy ends up out-ranking a newer server row in `mergeNotes`.
+		if (!current || current.title === clean) return;
 		this.notes = this.notes.map((n) =>
 			n.id === id ? { ...n, title: clean, updatedAt: Date.now() } : n
 		);
@@ -178,8 +191,13 @@ class NotesStore {
 	 * @param {string} body
 	 */
 	updateBody(id, body) {
+		const next = String(body ?? '');
+		const current = this.notes.find((n) => n.id === id);
+		// Same reasoning as `renameNote`: re-entering the text that is already
+		// there (an input event with no change) must not restamp this copy.
+		if (!current || current.body === next) return;
 		this.notes = this.notes.map((n) =>
-			n.id === id ? { ...n, body: String(body ?? ''), updatedAt: Date.now() } : n
+			n.id === id ? { ...n, body: next, updatedAt: Date.now() } : n
 		);
 		this.#queueSync(id);
 	}

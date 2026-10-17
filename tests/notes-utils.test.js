@@ -72,6 +72,30 @@ describe('mergeNotes', () => {
 		expect(mergeNotes([local], [server])[0].body).toBe('fresh');
 	});
 
+	test('takes the newer, shorter server copy so a deleted paragraph stays deleted', () => {
+		// The §7 case: one device deletes a paragraph, so the server's body is
+		// *shorter* and its updated_at is later. The other device must not keep
+		// its longer local copy.
+		const local = note({ id: 'n1', body: 'Chapter 4\nPARAGRAPH\nLast line', updatedAt: 1000 });
+		const server = note({ id: 'n1', body: 'Chapter 4\nLast line', updatedAt: 1053 });
+		expect(mergeNotes([local], [server])[0].body).toBe('Chapter 4\nLast line');
+	});
+
+	test('gives an equal updatedAt to the server, not to the local copy', () => {
+		// A tie means the client holds no edit newer than this server row; it
+		// does not mean the two copies agree. Keeping the local copy here is what
+		// brings deleted text back on the second device.
+		const local = note({ id: 'n1', body: 'Chapter 4\nPARAGRAPH\nLast line', updatedAt: 500 });
+		const server = note({ id: 'n1', body: 'Chapter 4\nLast line', updatedAt: 500 });
+		expect(mergeNotes([local], [server])[0].body).toBe('Chapter 4\nLast line');
+	});
+
+	test('still keeps a strictly newer local copy, so an unsynced edit survives', () => {
+		const local = note({ id: 'n1', body: 'typed with no server row yet', updatedAt: 900 });
+		const server = note({ id: 'n1', body: 'what the server last saw', updatedAt: 800 });
+		expect(mergeNotes([local], [server])[0].body).toBe('typed with no server row yet');
+	});
+
 	test('keeps notes that exist only on the server', () => {
 		expect(mergeNotes([], [note({ id: 's1' })]).map((n) => n.id)).toEqual(['s1']);
 	});

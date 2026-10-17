@@ -47,8 +47,17 @@ export function sortNotes(notes) {
  *
  * A local note the server has never seen is always kept. When both sides have
  * the same id, the copy with the greater `updatedAt` wins; on an equal
- * `updatedAt` the local copy is kept, because identical timestamps mean
- * neither side changed, so the user's on-screen copy is the one to trust.
+ * `updatedAt` the **server** copy wins.
+ *
+ * The tie rule used to favour the local copy, on the reasoning that identical
+ * timestamps mean neither side changed. That reasoning does not hold here:
+ * `POST /api/notes` stores the *client's* `updatedAt` verbatim, so a client's
+ * copy and its server row start out byte-identical, and a client that never
+ * adopts the server's later timestamps can hold a stamp the server cannot know
+ * about. A tie therefore only means "the client holds no edit newer than this
+ * row" — not "the two copies agree" — and trusting the local copy on a tie is
+ * what makes a paragraph deleted in one browser come back on another. A
+ * genuinely unsynced local edit still wins: it compares strictly greater.
  * @param {Note[]} localNotes
  * @param {Note[]} serverNotes
  * @returns {Note[]}
@@ -63,7 +72,7 @@ export function mergeNotes(localNotes, serverNotes) {
 	for (const note of localNotes ?? []) {
 		const n = normalizeNote(note);
 		const existing = merged.get(n.id);
-		if (!existing || n.updatedAt >= existing.updatedAt) merged.set(n.id, n);
+		if (!existing || n.updatedAt > existing.updatedAt) merged.set(n.id, n);
 	}
 	return sortNotes([...merged.values()]);
 }
