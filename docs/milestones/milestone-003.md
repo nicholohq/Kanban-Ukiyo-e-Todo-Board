@@ -73,10 +73,15 @@ Product Owner and the Architecture Authority.
   spec §9.3) — the feature ships without it; a `<textarea>` cannot style a text
   range. Options recorded in `session-005.md`; a small follow-up once one is
   chosen.
-- **Carried forward to Session 006.** Local notes are cached device-wide rather
-  than per-user (design spec §9.2), so text can be visible to a different account
-  signing in offline on the same device. Consistent with tasks today; Session
-  006's repository work is where it is fixed.
+- **Carried forward to Session 006 — a privacy limitation wider than tasks.**
+  Local notes are cached device-wide rather than per-user (design spec §9.2):
+  sign-out clears nothing locally and merge-on-load keeps a previous account's
+  note text visible to the next account on a shared device **online and
+  persistently**. Tasks replace their local state on load, so a previous user's
+  tasks surface only when offline — notes do not share that bound. Accepted for
+  this session; not fixed here because clearing local notes on sign-out would
+  destroy unsynced text. The fix is to scope the cached notes by user id, which
+  is Session 006's per-user repository.
 - **New, non-blocking follow-up.** `notesStore`'s flush only `PATCH`es, so a note
   created while the server was unreachable never reaches the server (its later
   `PATCH` returns 404). Nothing is lost locally. Candidate fix recorded under

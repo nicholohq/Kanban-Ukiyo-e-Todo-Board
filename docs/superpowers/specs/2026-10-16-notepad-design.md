@@ -311,8 +311,8 @@ turn — the fastest way to lose a paragraph.
   > `PATCH` returns 404 and it stays local-only — nothing is lost locally (the
   > text and the IndexedDB snapshot survive). §7's row 10 therefore holds for a
   > failed *update* but not a failed *create*. Recorded as an accepted limitation
-  > in `docs/progress/session-005.md` (Accepted Limitations) and in the Negative
-  > consequences of `docs/decisions/ADR-004-notepad-persistence.md`.
+  > in `docs/progress/session-005.md` (Accepted Limitations); it is consistent
+  > with the trade-offs ADR-004 records under its Negative consequences.
 
   Tasks keep their existing server-first behaviour. The divergence is deliberate and is
   one of the two items §9.4 puts in front of the Architecture Authority.
@@ -397,10 +397,16 @@ turn — the fastest way to lose a paragraph.
 1. **Where does it sit? — resolved 2026-10-16.** Session 005, roadmap v1.5 —
    Productivity. The repository and local-first inversion previously earmarked for
    Session 005 move to Session 006, whose tests follow at 006.5.
-2. **Shared-device caching.** Local persistence is device-wide, not per-user — true
-   today for tasks. With notes it means note text could be visible to a different
-   account signing in offline on the same device. Accept it (consistent with tasks,
-   fixed by the repository work in Session 006) or scope the notes cache to the user now?
+2. **Shared-device caching — resolved 2026-10-16: accepted, deferred to Session
+   006.** Local persistence is device-wide, not per-user. For tasks this surfaces a
+   previous user's rows only when the server is unreachable (the task load replaces
+   local state with the current user's copy). For notes it is **wider**: sign-out
+   clears nothing, and merge-on-load keeps the notes already in local storage, so a
+   second account signing in on a shared device sees the first account's note text
+   **online and persistently**. Accepted for this session; the fix is to scope the
+   cached notes by user id, the per-user repository Session 006's local-first
+   inversion builds (see the amendment at the foot of ADR-003, and
+   `docs/progress/session-005.md` Accepted Limitations).
 3. **How the "already sent" mark appears.** `❖` cannot be styled inside a plain
    `<textarea>`. Options: (a) a mirrored layer behind the textarea, so sent ranges are
    highlighted without altering the text; (b) no inline mark, instead a small "sent from

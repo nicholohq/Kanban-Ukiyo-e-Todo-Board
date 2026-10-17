@@ -246,9 +246,20 @@ Recorded here because nowhere else will.
   survive — so this is a sync gap, not data loss. Candidate fix (a follow-up,
   not part of this feature): make the flush use the now-idempotent `POST` as a
   universal upsert, or track which notes the server has confirmed.
-- **Local notes are cached device-wide, not per-user** (§9.2): note text can be
-  visible to a different account signing in offline on the same device.
-  Consistent with tasks today; fixed by Session 006's repository work.
+- **Local notes are cached device-wide, not per-user — a privacy limitation
+  wider than the task baseline** (§9.2). Sign-out clears nothing locally
+  (`auth.svelte.js`), and `notesStore.init()` **merges** the notes already in
+  local storage with the signed-in user's server copy, so on a shared device
+  signing in as a second account shows the **first** account's note text
+  **online and persistently** — not only on an offline fallback. Tasks differ:
+  `todoStore.init()` fetches the current user's tasks and **replaces** local
+  state (`todoStore.svelte.js`), so a previous user's tasks surface only when the
+  server is unreachable. Notes widen the exposure beyond that baseline; this is
+  accepted for this session and **deferred to Session 006**. It is not fixed here
+  deliberately: clearing the local notes on sign-out would destroy a user's
+  not-yet-synced notes — the opposite of this feature's promise — and the correct
+  fix is to scope the locally cached notes **by user id**, the per-user repository
+  Session 006 exists to build (the work the session reorder moved out of 005).
 - **Client-generated ids are trusted by the server**; uniqueness is the
   client's responsibility (ADR-004).
 - The snapshot now grows with note bodies rather than staying bounded by task
@@ -288,8 +299,12 @@ markdown items are unrelated), so the backlog is unchanged.
    this note" list in the tools row, or a literal `❖ ` character inserted into
    the text. The docked panel from Task 7 makes the mirrored layer newly
    feasible. Pick an option and it becomes a small follow-up task.
-2. **Shared-device caching — §9.2, unaddressed and unworsened.** See Accepted
-   Limitations; Session 006's repository work is where it is fixed.
+2. **Shared-device caching — §9.2.** Not fixed here, and the record does not
+   claim parity with tasks: notes widen the exposure (merge-on-load keeps a
+   previous account's note text visible **online and persistently**, where tasks
+   replace their local state and surface a previous user's rows only when
+   offline). Accepted for this session and **deferred to Session 006**, whose
+   per-user repository is the fix. See Accepted Limitations.
 3. **§9.1 — the session slot and roadmap version — resolved.** Session 005,
    roadmap v1.5 Productivity, confirmed 2026-10-16. (The brief said "the three
    deferred items below"; only two are actually deferred.)
@@ -298,8 +313,9 @@ markdown items are unrelated), so the backlog is unchanged.
 
 **The agent had no browser available, so none of the checks below were
 executed, and none is ticked. The human partner must run the design spec's §7
-manual table (the 13 rows quoted verbatim and unticked below) and the mobile-
-width check before the milestone is considered behaviourally verified.**
+manual table (the 13 rows quoted verbatim and unticked below), the mobile-width
+check and the two plan-derived rows before the milestone is considered
+behaviourally verified.**
 Nothing the agent ran — the test suite, the type check, the compile phase, or the
 API probe — can establish any of them.
 
@@ -327,6 +343,13 @@ mobile row):
 - [ ] The tab strip scrolls horizontally.
 - [ ] The send panel docks bottom-anchored.
 
+Two further human-required rows come from the implementation plan rather than the
+spec's §7 table (so they carry no §7 row number), quoted verbatim from
+`docs/superpowers/plans/2026-10-16-notepad.md` and likewise unticked:
+
+- [ ] **Sync window (Review Focus 5):** type in note A, immediately click note B within one second, type in B, then reload. **Expected:** A holds only A's text and B holds only B's text — nothing lost, nothing crossed.
+- [ ] **One writer (plan Task 5, step 8.7):** add a task on the board, then immediately type in the note and reload. **Expected:** both the new task and the new text survive — one snapshot carries tasks and notes together, neither overwrote the other.
+
 Note for row 10: the API endpoints the note sync calls are exercised by the probe
 above, but the sync behaviour itself (and "local writing is kept, not replaced")
 is a browser check and is not claimed here. Note also the failed-create sync gap
@@ -339,7 +362,7 @@ a failed *update* but not for a failed *create*.
   `TodoStore` decomposition, separation of device preferences
   (`filters`/`view`) from syncable data, upsert-only background reconciliation,
   reuse of `mergeNotes`, and per-user (not device-wide) local caching.
-- Human: run the 13 manual rows and the mobile check above.
+- Human: run the 13 manual rows, the mobile check and the two plan-derived rows above.
 
 ## End of session
 
