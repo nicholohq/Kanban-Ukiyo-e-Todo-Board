@@ -75,6 +75,14 @@ Product Owner and the Architecture Authority.
   reported merge blocker, so the milestone remains **implementation-complete,
   not behaviourally verified** pending the manual matrix — which now includes a
   cross-device deletion row.
+- 2026-10-17 (later): **The human partner's retest passed.** The cross-device
+  deletion case now holds — delete on A → reload B → gone → reload B again →
+  still gone — and §7 manual rows **1, 2, 3, 4 and 13** passed. §7 rows **5–12**,
+  the mobile-width check and the offline cases **9–10** are **outstanding, not
+  failed**: the mobile check is runnable locally by device emulation, and the
+  offline cases need a service worker, which dev does not register (steps in
+  `session-005.md`). The matrix is therefore **not clean**, so the milestone
+  stays implementation-complete rather than behaviourally verified.
 
 ## Blockers
 

@@ -366,21 +366,21 @@ this round — the notes sync gap, and per-user scoping of the local notes.
 
 ## Outstanding verification (human-required)
 
-**The agent had no browser available, so none of the checks below were
-executed, and none is ticked. The human partner must run the design spec's §7
-manual table (the 13 rows quoted verbatim and unticked below), the mobile-width
-check and the two plan-derived rows before the milestone is considered
-behaviourally verified.**
-Nothing the agent ran — the test suite, the type check, the compile phase, or the
-API probe — can establish any of them.
+**Partly verified — 2026-10-17. The matrix is not clean and is not claimed to
+be.** The human partner has run and passed §7 **rows 1, 2, 3, 4 and 13** and the
+**cross-device deletion** row; those are ticked below. Everything still unticked
+is **outstanding, not failed** — it has not been run in the current local
+environment. The agent has no browser, so nothing the agent ran (the test suite,
+the type check, the compile phase, the API probe) establishes any of it, and
+every verdict below is the human partner's.
 
 Design spec §7 manual table, quoted verbatim from
 `docs/superpowers/specs/2026-10-16-notepad-design.md`:
 
-- [ ] 1. Toggle to Notes, type a paragraph, reload — Text is still there
-- [ ] 2. Type, then check the board on a second device/browser — Note synced
-- [ ] 3. Rename a tab, reload — Name persisted
-- [ ] 4. Highlight a line → Send to board → title filled → highlight a second block → ⌖ Use selection → Send — One card in To Do, tagged with the note name, carrying that description
+- [x] 1. Toggle to Notes, type a paragraph, reload — Text is still there
+- [x] 2. Type, then check the board on a second device/browser — Note synced
+- [x] 3. Rename a tab, reload — Name persisted
+- [x] 4. Highlight a line → Send to board → title filled → highlight a second block → ⌖ Use selection → Send — One card in To Do, tagged with the note name, carrying that description
 - [ ] 5. Send with the description left empty — Card created, description empty
 - [ ] 6. Clear the title, press Next — Blocked with a message; nothing created
 - [ ] 7. Use a title identical to an existing card — Same message `TaskForm` shows; panel stays open
@@ -389,7 +389,13 @@ Design spec §7 manual table, quoted verbatim from
 - [ ] 10. Type offline, then load the app online with the server reachable — Local writing is kept, not replaced; it reaches the server on the next edit
 - [ ] 11. Delete a tab — Confirm dialog, then gone; task half unaffected
 - [ ] 12. Arrow keys in the tab strip, Escape from the send panel — Focus behaves
-- [ ] 13. Regress: board, list, drag, filter, search, task undo — Unchanged
+- [x] 13. Regress: board, list, drag, filter, search, task undo — Unchanged
+
+*(Rows 5–12 above are unticked because they have **not been run** in the current
+local environment — none is a known failure. Two qualifications: rows 9–10 cannot
+be run in dev at all (prerequisites below), and row 11's delete-and-gone half was
+exercised by the cross-device deletion retest, which passed — its "task half
+unaffected" half has not been checked.)*
 
 Mobile-width check (DevTools device mode, ~390 px; the spec's table has no
 mobile row):
@@ -398,13 +404,24 @@ mobile row):
 - [ ] The tab strip scrolls horizontally.
 - [ ] The send panel docks bottom-anchored.
 
+**Determined 2026-10-17 — runnable locally, not blocked.** These three rows need
+no extra setup: they exercise CSS layout, which responds to the viewport, so
+device emulation against the running dev server is enough. **Steps:** open
+`http://localhost:5173/` → DevTools (`F12`) → **Toggle device toolbar**
+(`Ctrl+Shift+M`) → set the width to **390 px** → reload → check the three bullets
+above. Caveats: emulation is not a handset — it does not exercise touch input, a
+collapsing mobile URL bar, or a real mobile browser — so this is the layout check
+it is; one real-device pass is still worth doing before the milestone closes.
+
 Two further human-required rows come from the implementation plan rather than the
 spec's §7 table (so they carry no §7 row number), adapted from
-`docs/superpowers/plans/2026-10-16-notepad.md` and likewise unticked:
+`docs/superpowers/plans/2026-10-16-notepad.md`; a third was added by the
+2026-10-17 fix. **The first two are outstanding, not failed; the third has
+passed:**
 
 - [ ] **Sync window (Review Focus 5):** type in note A, immediately click note B within one second, type in B, then reload. **Expected:** A holds only A's text and B holds only B's text — nothing lost, nothing crossed.
 - [ ] **One writer (plan Task 5, step 8.7):** add a task on the board, then immediately type in the note and reload. **Expected:** both the new task and the new text survive — one snapshot carries tasks and notes together, neither overwrote the other.
-- [ ] **Cross-device deletion (added 2026-10-17 — the reported bug):** create a note in browser A, let browser B sync it, then delete the note in **A** (`⋯` → Delete → confirm). **Expected in B:** reload once — the note is **gone**; reload again — **still gone**. Before `2408d67` it reappeared on every reload, forever.
+- [x] **Cross-device deletion (added 2026-10-17 — the reported bug):** create a note in browser A, let browser B sync it, then delete the note in **A** (`⋯` → Delete → confirm). **Expected in B:** reload once — the note is **gone**; reload again — **still gone**. Before `2408d67` it reappeared on every reload, forever.
 
 Note for row 10: the API endpoints the note sync calls are exercised by the probe
 above, but the sync behaviour itself (and "local writing is kept, not replaced")
@@ -412,17 +429,49 @@ is a browser check and is not claimed here. Note also the failed-create sync gap
 in Accepted Limitations: row 10's "reaches the server on the next edit" holds for
 a failed *update* but not for a failed *create*.
 
+**Prerequisites for the two offline rows (9, 10) — not runnable in `npm run dev`
+(confirmed 2026-10-17).** The app registers `./sw.js`
+(`src/routes/+layout.svelte`), which is **404** in dev, and nothing else registers
+a service worker: the dev HTML contains no `serviceWorker` reference at all, and
+the dev SW the PWA plugin generates (`dev-dist/sw.js`, via
+`devOptions.enabled`) is not served — **403**. In dev, therefore, "offline" would
+only exercise a hung network, not the cached app. To run them:
+
+1. `npm run build`. On Windows this still stops at the pre-existing
+   `adapter-vercel` EPERM symlink, but the client and the service worker are
+   emitted before that step: confirm `.svelte-kit/output/client/sw.js` and
+   `.svelte-kit/output/server/index.js` exist (both do as of 2026-10-17). The
+   build has **not** been confirmed to finish, and `.vercel/output/config.json` is
+   absent, so treat the output as partial.
+2. `npm run preview`, then confirm the worker is live: `/sw.js` must return 200
+   and the page must register it (DevTools → Application → Service Workers).
+3. **Check the API is mounted before row 10**: an unauthenticated `GET
+   /api/notes` must answer (`401`/`200`), not `404`. The Vercel adapter emits
+   serverless functions rather than a previewable server, so whether
+   `vite preview` mounts `/api/*` has **not** been established. If it does not,
+   run rows 9–10 against a Vercel preview deployment instead — that is the
+   adapter's real target, and the only environment where the offline path is
+   exercised as shipped.
+4. DevTools → Network → **Offline** → type → reload = row 9. Row 10 continues
+   with the network back on and a second edit, per the failed-*create* gap above.
+
 ## Next Session
 
 - **Session 006** — local-first inversion: the repository above the facade,
   `TodoStore` decomposition, separation of device preferences
   (`filters`/`view`) from syncable data, upsert-only background reconciliation,
   reuse of `mergeNotes`, and per-user (not device-wide) local caching.
-- Human: run the 13 manual rows, the mobile check and the two plan-derived rows above.
+- Human: finish the manual verification — §7 rows **5–12**, the mobile-width
+  check (runnable locally by device emulation; steps above) and the two
+  plan-derived rows (sync window, one writer), plus the offline rows **9–10** and
+  the prerequisites they need. §7 rows 1–4 and 13 and the cross-device deletion
+  row passed on 2026-10-17.
 
 ## End of session
 
-Session 005 is **implementation-complete and green on every gate the
-environment allows**, and is **not yet behaviourally verified** — the manual
-browser rows above are outstanding. The milestone is carried forward rather
-than closed as behaviourally complete; see `docs/milestones/milestone-003.md`.
+Session 005 is **implementation-complete and green on every gate the environment
+allows**, and is **partly, not fully, behaviourally verified**: five of the
+thirteen §7 rows and the cross-device deletion row have passed (2026-10-17), and
+the rest are outstanding rather than failed. The milestone is carried forward
+rather than closed as behaviourally complete; see
+`docs/milestones/milestone-003.md`.
