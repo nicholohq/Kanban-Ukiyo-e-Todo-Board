@@ -290,8 +290,9 @@ Recorded here because nowhere else will.
 ## Out of Scope (deferred)
 
 Two items from the design spec's §9 are deferred; a third is resolved. No
-`docs/BACKLOG.md` entry was covered by this feature (its export/import and
-markdown items are unrelated), so the backlog is unchanged.
+existing `docs/BACKLOG.md` entry was covered by this feature (its export/import
+and markdown items are unrelated); the backlog did gain the two follow-ups filed
+this round — the notes sync gap, and per-user scoping of the local notes.
 
 1. **The ❖ "already sent" mark — §9.3, unresolved, shipped unbuilt.** A
    `<textarea>` cannot style a range, so nothing in Tasks 1–8 marks sent text.
@@ -344,7 +345,7 @@ mobile row):
 - [ ] The send panel docks bottom-anchored.
 
 Two further human-required rows come from the implementation plan rather than the
-spec's §7 table (so they carry no §7 row number), quoted verbatim from
+spec's §7 table (so they carry no §7 row number), adapted from
 `docs/superpowers/plans/2026-10-16-notepad.md` and likewise unticked:
 
 - [ ] **Sync window (Review Focus 5):** type in note A, immediately click note B within one second, type in B, then reload. **Expected:** A holds only A's text and B holds only B's text — nothing lost, nothing crossed.
