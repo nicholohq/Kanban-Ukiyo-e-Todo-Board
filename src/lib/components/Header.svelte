@@ -315,6 +315,15 @@
 		.app-header {
 			padding: var(--s2) var(--s3);
 		}
+		/* Let the action row wrap, and give the view toggle a full-width row of
+		   its own, so its three segments stay comfortably wide at phone widths
+		   instead of being squeezed below their content. */
+		.actions {
+			flex-wrap: wrap;
+		}
+		.actions :global(.view-toggle) {
+			flex: 1 1 100%;
+		}
 		.brand-text h1 {
 			font-size: 1rem;
 		}
