@@ -29,6 +29,20 @@ describe('notes in the IndexedDB adapter', () => {
 		expect((await adapter.loadState())?.notes.map((n) => n.id)).toEqual(['n0']);
 	});
 
+	test('round-trips the pending flag on a note', async () => {
+		const adapter = new IndexedDBAdapter();
+		await adapter.initialize();
+		const notes = [
+			{ id: 'n0', title: 'Never synced', body: 'a', position: 0, createdAt: 1, updatedAt: 1, pending: true },
+			{ id: 'n1', title: 'Confirmed', body: 'b', position: 1, createdAt: 2, updatedAt: 2, pending: false }
+		];
+		await adapter.saveState(sampleState(0, 'notes', notes));
+
+		// The merge rule issues delete verdicts from this flag, so losing it on
+		// reload would either drop a real note or resurrect a deleted one.
+		expect((await adapter.loadState())?.notes.map((n) => n.pending)).toEqual([true, false]);
+	});
+
 	test('clear() empties the notes store too', async () => {
 		const adapter = new IndexedDBAdapter();
 		await adapter.initialize();
@@ -76,6 +90,17 @@ describe('notes in the localStorage adapter', () => {
 		expect(loaded?.notes.map((n) => n.id)).toEqual(['n0', 'n1']);
 		expect(loaded?.activeNoteId).toBe('n1');
 		expect(loaded?.view).toBe('notes');
+	});
+
+	test('round-trips the pending flag on a note', async () => {
+		const adapter = new LocalStorageAdapter();
+		const notes = [
+			{ id: 'n0', title: 'Never synced', body: 'a', position: 0, createdAt: 1, updatedAt: 1, pending: true },
+			{ id: 'n1', title: 'Confirmed', body: 'b', position: 1, createdAt: 2, updatedAt: 2, pending: false }
+		];
+		await adapter.saveState(sampleState(0, 'notes', notes));
+
+		expect((await adapter.loadState())?.notes.map((n) => n.pending)).toEqual([true, false]);
 	});
 
 	test('normalises a payload written before notes existed', async () => {

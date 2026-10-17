@@ -37,6 +37,35 @@ describe('LocalStorageAdapter', () => {
 		expect(await adapter.loadState()).toBeNull();
 	});
 
+	test('migrates the v1 payload instead of discarding it', async () => {
+		// v1 shipped before notes carried a `pending` flag. The adapter returns
+		// null for a payload it cannot migrate (see the mismatch test below), so a
+		// version bump with no migrate case would throw away every local note and
+		// task on the localStorage fallback — the one outcome the notepad must
+		// never cause.
+		localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify({
+				version: 1,
+				tasks: [{ id: 't0' }],
+				filters: null,
+				view: 'notes',
+				notes: [
+					{ id: 'n0', title: 'Old note', body: 'text', position: 0, createdAt: 1, updatedAt: 1 }
+				],
+				activeNoteId: 'n0'
+			})
+		);
+
+		const adapter = new LocalStorageAdapter();
+		const loaded = await adapter.loadState();
+
+		expect(loaded).not.toBeNull();
+		expect(loaded?.version).toBe(STORAGE_VERSION);
+		expect(loaded?.notes.map((n) => n.id)).toEqual(['n0']);
+		expect(loaded?.tasks.map((t) => t.id)).toEqual(['t0']);
+	});
+
 	test('rejects a payload written under a mismatched version', async () => {
 		localStorage.setItem(
 			STORAGE_KEY,

@@ -68,14 +68,17 @@ class NotesStore {
 		const local = persisted?.notes;
 		/** @type {Note[]} */
 		let server = [];
+		// Only a list that actually came back can certify that a note was
+		// deleted. If the fetch failed the merge must keep everything local —
+		// otherwise an offline reload would read as "the server deleted it all".
+		let authoritative = false;
 		try {
 			server = await fetchNotes();
+			authoritative = true;
 		} catch {
-			// A failed fetch passes [] — the merge rule reads that as "keep
-			// everything local", so offline notes survive a reload untouched.
 			server = [];
 		}
-		const merged = mergeNotes(local, server);
+		const merged = mergeNotes(local, server, { authoritative });
 		this.notes = merged;
 
 		const persistedActive = persisted?.activeNoteId ?? null;
@@ -93,6 +96,16 @@ class NotesStore {
 	}
 
 	// ---- Server sync --------------------------------------------------------
+
+	/**
+	 * Mark a note confirmed — the server now has a row for it. From here on the
+	 * merge reads the note's absence from the server as a deletion rather than as
+	 * "never synced".
+	 * @param {string} id
+	 */
+	#confirm(id) {
+		this.notes = this.notes.map((n) => (n.id === id ? { ...n, pending: false } : n));
+	}
 
 	/**
 	 * Queue a note for the debounced server flush. Only the id is remembered;
@@ -123,14 +136,17 @@ class NotesStore {
 				const note = this.notes.find((n) => n.id === id);
 				if (!note) continue; // deleted during the debounce window
 				const saved = await updateNoteApi(id, { title: note.title, body: note.body });
-				// Adopt the server's own timestamp. Keeping the client's
-				// `Date.now()` from the edit would leave the two sides comparing
-				// values from different clocks, and this client's could then win a
-				// merge it should lose the next time another device edits.
-				if (saved && Number.isFinite(Number(saved.updatedAt))) {
-					const stamp = Number(saved.updatedAt);
-					this.notes = this.notes.map((n) => (n.id === id ? { ...n, updatedAt: stamp } : n));
-				}
+				// A PATCH only succeeds against a row that exists, so this note is
+				// confirmed. Adopt the server's own timestamp as well: keeping the
+				// client's `Date.now()` from the edit would leave the two sides
+				// comparing values from different clocks, and this client's could
+				// then win a merge it should lose the next time another device edits.
+				const stamp = Number(saved?.updatedAt);
+				this.notes = this.notes.map((n) => {
+					if (n.id !== id) return n;
+					const next = { ...n, pending: false };
+					return Number.isFinite(stamp) ? { ...next, updatedAt: stamp } : next;
+				});
 			}
 		} catch {
 			this.syncStatus = 'error';
@@ -158,11 +174,17 @@ class NotesStore {
 			body: '',
 			position: this.notes.length,
 			createdAt: now,
-			updatedAt: now
+			updatedAt: now,
+			// Unconfirmed until the server accepts it. The merge keeps an
+			// unconfirmed local-only note, and only a confirmed note can be
+			// dropped when the server stops listing it.
+			pending: true
 		};
 		this.notes = [...this.notes, note];
 		this.activeNoteId = note.id;
-		createNoteApi(note).catch(() => toasts.error('Failed to save note to server.'));
+		createNoteApi(note)
+			.then(() => this.#confirm(note.id))
+			.catch(() => toasts.error('Failed to save note to server.'));
 		return note;
 	}
 

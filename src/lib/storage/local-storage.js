@@ -38,13 +38,19 @@ export class LocalStorageAdapter {
 
 	/**
 	 * Migrate a persisted payload from an older version to the current one.
-	 * Currently a no-op passthrough; add cases here as the schema evolves.
+	 *
+	 * A case must exist for every older version still in the wild: `loadState`
+	 * discards (returns null for) anything it cannot migrate, so bumping
+	 * `STORAGE_VERSION` without a case here throws away the whole local payload.
 	 * @param {any} data
 	 * @returns {any}
 	 */
 	#migrate(data) {
-		// Example for the future:
-		// if (data.version === 1) { data = {...}; data.version = 2; }
+		// v1 → v2: notes gained `pending` (see schema.js). A v1 note carries no
+		// flag, and `normalizeNote` reads a missing flag as confirmed, so a note
+		// another device deleted is still dropped. Nothing else in the payload
+		// changed.
+		if (data.version === 1) return { ...data, version: 2 };
 		return data;
 	}
 

@@ -8,6 +8,9 @@ import {
 	cardTitleError
 } from '../src/lib/utils/notes.js';
 
+// `pending: false` by default — a note the server has confirmed is the normal
+// state, and the merge only ever drops a note that is both absent from the
+// server and confirmed.
 const note = (over = {}) => ({
 	id: 'n1',
 	title: 'Sociology',
@@ -15,6 +18,7 @@ const note = (over = {}) => ({
 	position: 0,
 	createdAt: 1,
 	updatedAt: 1,
+	pending: false,
 	...over
 });
 
@@ -34,7 +38,8 @@ describe('normalizeNote', () => {
 			body: '',
 			position: 0,
 			createdAt: 0,
-			updatedAt: 0
+			updatedAt: 0,
+			pending: false
 		});
 	});
 
@@ -53,10 +58,63 @@ describe('sortNotes', () => {
 });
 
 describe('mergeNotes', () => {
-	test('keeps a local-only note the server has never seen', () => {
-		expect(mergeNotes([note({ id: 'local', updatedAt: 50 })], []).map((n) => n.id)).toEqual([
-			'local'
-		]);
+	test('keeps every local note when the fetch failed — the list is not authoritative', () => {
+		// A failed GET passes an empty list. That must not read as "the server
+		// has nothing": an offline note has no other home.
+		const local = note({ id: 'local', updatedAt: 50 });
+		expect(mergeNotes([local], []).map((n) => n.id)).toEqual(['local']);
+		expect(mergeNotes([local], [], { authoritative: false }).map((n) => n.id)).toEqual(['local']);
+	});
+
+	test('drops a confirmed local note the server no longer lists', () => {
+		// The reported bug. A deletes the whole note and the server row is gone
+		// (probe-verified), but B still holds a local copy — so without this rule
+		// the note comes back on every reload, forever.
+		const deleted = note({ id: 'gone', pending: false, updatedAt: 500 });
+		const kept = note({ id: 'stay', pending: false, updatedAt: 400 });
+		const merged = mergeNotes([deleted, kept], [kept], { authoritative: true });
+		expect(merged.map((n) => n.id)).toEqual(['stay']);
+	});
+
+	test('keeps an unconfirmed local note the server has never listed', () => {
+		// Created offline: the server row does not exist yet, so a successful
+		// fetch still does not list it. The text must survive.
+		const local = note({ id: 'offline', pending: true, updatedAt: 50 });
+		expect(mergeNotes([local], [], { authoritative: true }).map((n) => n.id)).toEqual(['offline']);
+	});
+
+	test('reads a missing pending flag as confirmed', () => {
+		// A record written before the flag existed cannot be assumed unconfirmed:
+		// the app POSTs every new note, so a pre-flag note has almost certainly
+		// been synced, and the opposite default would stop a deletion propagating
+		// on every device that upgrades.
+		expect(normalizeNote(note({ pending: undefined })).pending).toBe(false);
+
+		const legacy = {
+			id: 'v1',
+			title: 'Old',
+			body: 'text',
+			position: 0,
+			createdAt: 1,
+			updatedAt: 1
+		};
+		// Absent from an authoritative list, so another device deleted it.
+		expect(mergeNotes([legacy], [], { authoritative: true }).map((n) => n.id)).toEqual([]);
+	});
+
+	test('marks a note the server lists as confirmed, whichever copy wins', () => {
+		const local = note({ id: 'n1', pending: true, body: 'local', updatedAt: 10 });
+		const server = note({ id: 'n1', body: 'server', updatedAt: 30 });
+		expect(mergeNotes([local], [server], { authoritative: true })[0]).toMatchObject({
+			pending: false,
+			body: 'server'
+		});
+
+		const newerLocal = note({ id: 'n1', pending: true, body: 'local', updatedAt: 99 });
+		expect(mergeNotes([newerLocal], [server], { authoritative: true })[0]).toMatchObject({
+			pending: false,
+			body: 'local'
+		});
 	});
 
 	test('keeps the newer copy when both sides have changed it', () => {

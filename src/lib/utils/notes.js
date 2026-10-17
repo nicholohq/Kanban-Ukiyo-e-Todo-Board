@@ -12,6 +12,10 @@
  * @property {number} position
  * @property {number} createdAt
  * @property {number} updatedAt
+ * @property {boolean} pending Set only by a note created on this device and not
+ *   yet accepted by the server. The merge drops a note the server has stopped
+ *   listing only when the note is confirmed; an unconfirmed note is always kept,
+ *   because its text has no other home.
  */
 
 /**
@@ -29,7 +33,13 @@ export function normalizeNote(raw) {
 		body: String(r.body ?? ''),
 		position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
 		createdAt: Number.isFinite(Number(r.createdAt)) ? Number(r.createdAt) : 0,
-		updatedAt: Number.isFinite(Number(r.updatedAt)) ? Number(r.updatedAt) : 0
+		updatedAt: Number.isFinite(Number(r.updatedAt)) ? Number(r.updatedAt) : 0,
+		// Only an explicit `true` marks a note unconfirmed. A record written
+		// before the flag existed therefore reads as confirmed — the app POSTs
+		// every new note, so a pre-flag note has almost certainly been synced,
+		// and reading them as unconfirmed instead would stop a deletion
+		// propagating on every device that upgrades.
+		pending: r.pending === true
 	};
 }
 
@@ -45,34 +55,53 @@ export function sortNotes(notes) {
 /**
  * Merge the local and server copies of the notepad, keyed by id.
  *
- * A local note the server has never seen is always kept. When both sides have
- * the same id, the copy with the greater `updatedAt` wins; on an equal
- * `updatedAt` the **server** copy wins.
+ * Both sides of a shared id: the copy with the greater `updatedAt` wins, and on
+ * an equal `updatedAt` the **server** copy wins. The tie rule used to favour the
+ * local copy, on the reasoning that identical timestamps mean neither side
+ * changed. That reasoning does not hold here: `POST /api/notes` stores the
+ * *client's* `updatedAt` verbatim, so a client's copy and its server row start
+ * out byte-identical, and a client that never adopts the server's later
+ * timestamps can hold a stamp the server cannot know about. A tie therefore only
+ * means "the client holds no edit newer than this row" — not "the two copies
+ * agree". A genuinely unsynced local edit still wins: it compares strictly
+ * greater.
  *
- * The tie rule used to favour the local copy, on the reasoning that identical
- * timestamps mean neither side changed. That reasoning does not hold here:
- * `POST /api/notes` stores the *client's* `updatedAt` verbatim, so a client's
- * copy and its server row start out byte-identical, and a client that never
- * adopts the server's later timestamps can hold a stamp the server cannot know
- * about. A tie therefore only means "the client holds no edit newer than this
- * row" — not "the two copies agree" — and trusting the local copy on a tie is
- * what makes a paragraph deleted in one browser come back on another. A
- * genuinely unsynced local edit still wins: it compares strictly greater.
+ * Local only: a note the server does not list is dropped **once it is
+ * confirmed**, and kept while it is `pending` (created here, not yet accepted by
+ * the server). Given an authoritative list, a confirmed local note that has gone
+ * missing was deleted by another device. The two cases are otherwise
+ * indistinguishable — "created here, never synced" and "deleted elsewhere" are
+ * both just "a local id with no server row" — so without the flag a deletion
+ * could never propagate.
+ *
+ * `authoritative` must be true **only** for a list returned by a successful
+ * fetch. A failed fetch passes nothing, and nothing local may be dropped on the
+ * strength of a request that never completed.
  * @param {Note[]} localNotes
  * @param {Note[]} serverNotes
+ * @param {{authoritative?: boolean}} [options]
  * @returns {Note[]}
  */
-export function mergeNotes(localNotes, serverNotes) {
+export function mergeNotes(localNotes, serverNotes, { authoritative = false } = {}) {
 	/** @type {Map<string, Note>} */
 	const merged = new Map();
 	for (const note of serverNotes ?? []) {
+		// Being listed by the server is what confirms a note exists.
 		const n = normalizeNote(note);
-		merged.set(n.id, n);
+		merged.set(n.id, { ...n, pending: false });
 	}
 	for (const note of localNotes ?? []) {
 		const n = normalizeNote(note);
 		const existing = merged.get(n.id);
-		if (!existing || n.updatedAt > existing.updatedAt) merged.set(n.id, n);
+		if (existing) {
+			// Present on both sides, so confirmed either way.
+			if (n.updatedAt > existing.updatedAt) merged.set(n.id, { ...n, pending: false });
+			continue;
+		}
+		// Absent from the server: deleted elsewhere, or never confirmed and so
+		// with no other home for its text.
+		if (authoritative && !n.pending) continue;
+		merged.set(n.id, n);
 	}
 	return sortNotes([...merged.values()]);
 }
