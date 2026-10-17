@@ -16,7 +16,7 @@ Product Owner and the Architecture Authority.
 - [x] Named tabs: create, rename, delete, reorder (drag and keyboard), active note remembered per device
 - [x] `notes` object store at IndexedDB database v2, with a guarded upgrade for existing databases
 - [x] `notes` table in the boot migration and `/api/notes` CRUD + reorder endpoints
-- [x] Merge-on-load: the newer `updatedAt` per note wins, local-only notes are never dropped
+- [x] Merge-on-load: the newer `updatedAt` per note wins, and a local-only note is never dropped while it is `pending` — a confirmed one the server no longer lists is treated as deleted (amended 2026-10-17)
 - [x] Docked two-highlight send-to-board panel (title, then description; lands in To Do, tagged with the note's name)
 - [x] `.txt` export of the open note
 - [x] ADR-004: Notepad Persistence
@@ -42,7 +42,7 @@ Product Owner and the Architecture Authority.
 | Notes persistence | New `notes` table and `/api/notes`, client-generated note ids | ADR-004 |
 | Local shape | `notes` object store at database v2, upgrade guarded on `oldVersion` | ADR-004 |
 | Single writer | `todoStore` saves notes with the tasks in one snapshot | ADR-004 |
-| Load semantics | Merge on load — newer `updatedAt` per id wins, local-only notes kept | ADR-004 |
+| Load semantics | Merge on load — newer `updatedAt` per id wins; a `pending` local-only note is kept, a confirmed one missing from the server is dropped | ADR-004 |
 | Server sync | Debounced 1000 ms, one `PATCH` per changed note | ADR-004 |
 
 ## Progress
@@ -66,6 +66,15 @@ Product Owner and the Architecture Authority.
   milestone is considered behaviourally verified. The milestone is
   **implementation-complete, not behaviourally verified** — the code being
   finished is not the same as the behaviour being verified.
+- 2026-10-17: **Two load-path bugs found by the first manual verification run**
+  (the human partner reported them): a stale local copy out-ranking a newer
+  server row (`3837cee`), and a note deleted on one device resurrecting on every
+  reload of another (`2408d67`). Both were diagnosed before being fixed, both
+  carry failing-first tests, and both are recorded in the design spec's §5.4
+  amendments and ADR-004; `npm test` is now **68/68**. The deletion fix is the
+  reported merge blocker, so the milestone remains **implementation-complete,
+  not behaviourally verified** pending the manual matrix — which now includes a
+  cross-device deletion row.
 
 ## Blockers
 

@@ -65,7 +65,7 @@
 | **Automatic verified migration** | One-time localStorage → IndexedDB move; idempotent, integrity-checked, non-destructive |
 | **localStorage fallback** | Offline resilience where IndexedDB is unavailable |
 | **Notes: one snapshot writer** | `todoStore` saves tasks **and** notes in one atomic snapshot; `notesStore` holds note state and server sync only (ADR-004) |
-| **Notes: merge on load** | The newer `updatedAt` per id wins and local-only notes are kept — long-form text is too costly to lose — instead of the tasks' server-first replace (ADR-004) |
+| **Notes: merge on load** | The newer `updatedAt` per id wins; an unconfirmed local-only note (`pending`) is kept — long-form text is too costly to lose — while a confirmed one the server no longer lists is dropped as deleted, instead of the tasks' server-first replace (ADR-004) |
 | **Notes: client-generated ids** | `POST /api/notes` stores the client's id, because merge-on-load reconciles by id (ADR-004) |
 | **Notes: debounced sync** | One `PATCH` per note, 1000 ms after typing stops; a document body cannot be sent per keystroke (ADR-004) |
 | **No CSS framework** | Hand-written CSS for full aesthetic control |
@@ -96,13 +96,22 @@
 - Create and delete fire immediately (`POST` / `DELETE`); reorder fires
   `PUT /api/notes/reorder`.
 - **Load path:** read local notes from the facade, `GET /api/notes`, then
-  **merge** by id — the newer `updatedAt` per note wins, and a local-only note
-  is kept rather than replaced. A failed fetch passes `[]`, which the merge
-  reads as "keep everything local". Nothing is pushed to the server during
-  load: a locally-newer note that **has a server row** is `PATCH`ed on the next
-  edit, while a note created while the server was unreachable has no server row
-  and so cannot reach the server that way — it stays local-only, its text and
-  IndexedDB snapshot safe (ADR-004; `session-005.md` Accepted Limitations).
+  **merge** by id — the newer `updatedAt` per note wins, a note the server lists
+  is confirmed, and a local note the server does not list is kept only while it
+  is `pending`. `pending` is set when a note is created here and cleared once the
+  server accepts it, so a note the server has **stopped** listing is a deletion
+  from another device and is dropped. A failed fetch passes nothing and leaves
+  the list non-authoritative, which the merge reads as "keep everything local".
+  Nothing is pushed to the server during load: a locally-newer note that **has a
+  server row** is `PATCH`ed on the next edit, while a note created while the
+  server was unreachable has no server row and so cannot reach the server that
+  way — it stays `pending` and local-only, its text and IndexedDB snapshot safe
+  (ADR-004, as amended 2026-10-17; `session-005.md` Accepted Limitations).
+- **Delete path:** a deletion propagates by inference, not by a record — every
+  device drops the note because its confirmed local copy is missing from a
+  successful server list. A deletion made while the deleting device is **offline**
+  is not durable yet; tombstones are the Session 007 follow-on
+  (`docs/BACKLOG.md`).
 - This is the deliberate divergence from tasks: tasks **replace** local state
   with the server copy (server-first), notes **merge** with it.
 

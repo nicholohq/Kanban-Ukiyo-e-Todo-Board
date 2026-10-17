@@ -294,7 +294,7 @@ turn — the fastest way to lose a paragraph.
   1. Read local notes from the facade.
   2. `GET /api/notes`.
   3. Merge by id, keeping the **newer `updatedAt`** for each note.
-  4. Keep every local-only note. Nothing is dropped for being absent from the server.
+  4. Keep every local-only note. Nothing is dropped for being absent from the server. **(Amended 2026-10-17 — only while it is `pending`: a confirmed local note the server no longer lists is a deletion and is dropped. See below.)**
   5. Write the merged set back to the facade.
 
   Nothing is pushed to the server during `init()`: a local-only or locally-newer note
@@ -313,6 +313,21 @@ turn — the fastest way to lose a paragraph.
   > failed *update* but not a failed *create*. Recorded as an accepted limitation
   > in `docs/progress/session-005.md` (Accepted Limitations); it is consistent
   > with the trade-offs ADR-004 records under its Negative consequences.
+
+  > **Deletion corrected — 2026-10-17.** Step 4, as written, made a deletion
+  > impossible to propagate: "created here, never synced" and "deleted on another
+  > device" are both just "a local id with no server row", so a note deleted on
+  > one device reappeared on every device still holding a copy — permanently,
+  > because nothing pushed or dropped it. Notes now carry **`pending`**: set when
+  > a note is created here, cleared once the server accepts it (a successful
+  > `POST`, or a `PATCH`, which only succeeds against a row that exists). Step 4
+  > now reads: **keep every `pending` local-only note; drop a confirmed local
+  > note the server no longer lists**, since given a successful fetch that is a
+  > deletion. A failed fetch leaves the list non-authoritative and still keeps
+  > everything, so §7's offline behaviour is unchanged. Two limits are recorded
+  > rather than solved: a record written before the flag existed is read as
+  > confirmed, and a deletion made offline is still not durable — both are
+  > removed by the tombstone work in Session 007 (`docs/BACKLOG.md`, ADR-004).
 
   Tasks keep their existing server-first behaviour. The divergence is deliberate and is
   one of the two items §9.4 puts in front of the Architecture Authority.
@@ -433,6 +448,8 @@ send panel, merge on load, and title validation.
   selectable between the two highlights.
 - **Local notes merge on load** instead of being replaced by the server copy. A
   local-only note survives; pushing it to the server is not part of this (see §5.4).
+  (**Amended 2026-10-17** — a local-only note survives while it is `pending`; a
+  confirmed one the server no longer lists is treated as deleted. See §5.4.)
 - **Titles are validated:** an empty title blocks Next, and a duplicate reuses
   `TaskForm`'s existing message and keeps the panel open.
 

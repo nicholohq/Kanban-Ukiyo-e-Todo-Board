@@ -67,6 +67,28 @@ merge keeps a local note from being destroyed by an empty or stale server
 response. Nothing is pushed to the server during init — no pending write is
 flushed, and no unsent note is transmitted as part of loading.
 
+> **Amended — 2026-10-17: a merge cannot treat every local-only note as kept.**
+> The rule above as originally written made a deletion impossible to propagate:
+> "created here, never synced" and "deleted on another device" are both just
+> "a local id with no server row", so a note deleted on one device reappeared on
+> every device that still held a local copy — permanently, because nothing
+> pushed or dropped it. Notes now carry a **`pending`** flag: set when a note is
+> created here, cleared once the server accepts it (a successful `POST`, or a
+> `PATCH`, which only succeeds against a row that exists). The merge **keeps an
+> unconfirmed note** — its text has no other home — and **drops a confirmed one**
+> that an authoritative server list no longer contains. "Authoritative" means the
+> list came back from a successful fetch: a failed fetch still keeps everything,
+> so the offline protection above is unchanged.
+>
+> One case is decided rather than solved: a record written *before* the flag
+> existed reads as **confirmed**, because `POST /api/notes` sends every new note
+> as it is created and so a pre-flag note has almost certainly been synced.
+> Reading those records as unconfirmed instead would leave a deletion unable to
+> propagate on any device that upgrades. The residual risk — a note created
+> before this change while the server was unreachable would be dropped by the
+> next successful load — is recorded as an accepted limitation and is removed by
+> the tombstone work in Session 007 (`docs/BACKLOG.md`).
+
 ### 4. Server sync for notes is debounced 1000 ms per note
 
 A note's body is written to the server 1000 ms after the last change to that
@@ -96,6 +118,17 @@ fields, and the adapter fills in defaults for a payload written before notes
 existed. The facade contract — `loadState`, `saveState`, `clear` — is unchanged
 and evolves additively, as §7 of ADR-003 requires. Existing callers never break.
 
+> **Amended — 2026-10-17: `STORAGE_VERSION` moves to 2.** The `pending` flag
+> (§3 amendment) is part of the persisted note shape, so the payload version
+> records it. The bump requires a **v1 → v2 case in the adapter's `#migrate`**:
+> `LocalStorageAdapter.loadState` returns `null` for a payload it cannot migrate,
+> so a version bump alone would discard every locally stored note *and task* on
+> the localStorage fallback. The case is a passthrough with the version stamped —
+> a v1 note has no flag, and `normalizeNote` reads a missing flag as confirmed —
+> and a test now pins a v1 payload loading instead of being discarded. The
+> IndexedDB path needs no migration for this: the notes store persists whole
+> objects, so the flag round-trips without a `DB_VERSION` change.
+
 ## Consequences
 
 **Positive:**
@@ -123,6 +156,12 @@ and evolves additively, as §7 of ADR-003 requires. Existing callers never break
   bodies rather than staying bounded by task count.
 - The 1000 ms debounce means the very last edit before a close can be in flight;
   the local note is still safe, but a server round-trip may not have completed.
+- A deletion is propagated by *inference* — a confirmed local note missing from a
+  successful server list is treated as deleted — rather than by a record of the
+  deletion. A deletion made while offline is therefore still not durable, and a
+  note created before the `pending` flag existed and never synced is read as
+  confirmed. Both are removed by the tombstone work deferred to Session 007
+  (amended 2026-10-17).
 
 ## Contract Stability
 
@@ -131,8 +170,9 @@ and evolves additively, as §7 of ADR-003 requires. Existing callers never break
 | Public methods | `loadState`, `saveState`, `clear` — stable |
 | Evolution | Additive only; `PersistedState` gains `notes` and `activeNoteId`, `view` accepts `'notes'` |
 | Backend | Unchanged — the notes store is an adapter detail |
-| Schema | `DB_VERSION` 1 → 2, applied by a guarded upgrade; `STORAGE_VERSION` unchanged (1) |
+| Schema | `DB_VERSION` 1 → 2, applied by a guarded upgrade; `STORAGE_VERSION` 1 → 2 for the `pending` shape, with a required migrate case (amended 2026-10-17) |
 | Migration | The task migration is undisturbed by notes; notes are never pushed during init |
+| Deletion | A confirmed local note absent from an authoritative server list is dropped; a `pending` note is always kept (amended 2026-10-17) |
 
 ## Relationship to the Roadmap
 

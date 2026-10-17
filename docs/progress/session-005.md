@@ -16,7 +16,8 @@ Session 005 — Notepad (roadmap v1.5 — Productivity):
   keeping `todoStore` the single snapshot writer.
 - Persist notes on the server through a new `notes` table and `/api/notes`
   endpoints, debounced 1000 ms per note.
-- Merge local and server notes on load (newer `updatedAt` wins, local-only kept)
+- Merge local and server notes on load (newer `updatedAt` wins; a `pending`
+  local-only note is kept, a confirmed one the server no longer lists is dropped)
   instead of the tasks' server-first replace.
 - Promote a two-highlight selection into a board card through a docked panel,
   and export the open note as `.txt`.
@@ -33,9 +34,11 @@ the next began.
 
 - `normalizeNote`, `sortNotes`, `mergeNotes`, `sanitizeFilename`, `noteToTxt`,
   `cardTitleError` — pure functions, no Svelte, no storage, no network.
-- `mergeNotes(localNotes, serverNotes)` keys by id, keeps the newer `updatedAt`
-  per id, keeps local-only notes, and never drops a note for being absent from
-  the server. Identical timestamps keep the local copy.
+- `mergeNotes(localNotes, serverNotes, { authoritative })` keys by id and keeps
+  the newer `updatedAt` per id; an `updatedAt` tie goes to the **server**
+  (`3837cee`). A local note the server does not list is kept while it is
+  `pending` and dropped once confirmed (`2408d67`) — both from the two
+  post-implementation fixes in §8.
 - `normalizeView` coerces a persisted view to `'board'|'list'|'notes'` (default
   `'board'`).
 
@@ -108,6 +111,40 @@ the next began.
 - `submitCard` calls `todoStore.addTask({ …data, tags: note ? [note.title] : [] })`
   and never mutates the note.
 
+### 8. Post-implementation fixes (2026-10-17, found by the first manual matrix run)
+
+Two load-path bugs surfaced when the human partner ran the manual verification
+matrix. Both were diagnosed before they were fixed, both are recorded in the
+design spec's §5.4 amendments and in ADR-004, and both carry failing-first tests.
+
+- **A stale local copy out-ranked a newer server row (`3837cee`).**
+  `mergeNotes` kept the **local** copy on an `updatedAt` tie. `POST /api/notes`
+  stores the *client's* `updatedAt` verbatim, so a local copy and its server row
+  start byte-identical, and a client that never adopts the server's later
+  timestamps holds a stamp the server cannot know about — so a tie does not mean
+  "the copies agree". The tie now goes to the server (a strictly-greater local
+  edit still wins); `updateBody`/`renameNote` are no-ops on an unchanged value;
+  and the flush adopts the `updatedAt` the server returns. Failing-first proof:
+  with the old tie rule restored, the new test failed and printed the
+  resurrected paragraph.
+- **A deleted note came back on every reload (`2408d67`).** The merge kept any
+  local note the server did not list, so "created here, never synced" was
+  indistinguishable from "deleted on another device" and a deletion could never
+  propagate. Measured first, against a throwaway `file:` database: `DELETE
+  /api/notes/{id}` returns `200 {"ok":true}` and a **brand-new profile** (no local
+  notes) no longer sees the note, while a profile holding a local copy
+  resurrected it. Notes now carry **`pending`** — set on create, cleared by a
+  successful `POST` or `PATCH` — and `mergeNotes` **drops a confirmed local note
+  absent from an authoritative list** while keeping an unconfirmed one. A failed
+  fetch leaves the list non-authoritative, so an offline reload still keeps
+  everything. `STORAGE_VERSION` went **1 → 2** with a **required** v1 → v2
+  `#migrate` case: without it the localStorage fallback discards the whole
+  payload (demonstrated — with the case removed, the new test read `null`).
+
+`npm test` **68/68 across 7 files** (58 when the session's tasks finished, 61
+after `3837cee`, 68 after `2408d67`); `npm run check` still **0 errors, 14
+warnings**.
+
 ## Build Verification
 
 - `npm test` — ✅ **58 passed (58) across 7 files** (the 29 original tests plus
@@ -167,14 +204,15 @@ ignored scratch, not committed).
 
 | Suite | Scenarios |
 |-------|-----------|
-| `notes-utils` | `normalizeNote`, `sortNotes`, `mergeNotes` (local-only kept, newer wins both ways, server-newer, server-only kept, no `undefined`, position order), `sanitizeFilename`, `noteToTxt`, `cardTitleError` |
+| `notes-utils` | `normalizeNote`, `sortNotes`, `mergeNotes` (everything kept when the fetch failed, a confirmed-and-unlisted note dropped, an unconfirmed one kept, a server-listed note confirmed, a missing flag read as confirmed, newer wins both ways, server-newer, server-only kept, no `undefined`, position order), `sanitizeFilename`, `noteToTxt`, `cardTitleError` |
 | `view` | the three views, fallback to board |
-| `notes-storage` | IndexedDB round-trip (notes/activeNoteId/notes view), no duplication, clear, **v1 → v2 upgrade without losing tasks**; localStorage round-trip, pre-notes payload normalisation, notes view not coerced |
+| `notes-storage` | IndexedDB round-trip (notes/activeNoteId/notes view), no duplication, clear, **v1 → v2 upgrade without losing tasks**, the **`pending` flag round-trips**; localStorage round-trip, the `pending` flag round-trips, pre-notes payload normalisation, notes view not coerced |
 | `storage-facade` | notes + active note through the facade (plus the original Session 004 cases) |
 | `migration` | the task migration stays undisturbed with notes present (plus the original cases) |
-| `indexeddb-adapter`, `local-storage-adapter` | unchanged from Session 004 |
+| `indexeddb-adapter`, `local-storage-adapter` | unchanged from Session 004, plus a guard that a **v1 payload migrates instead of being discarded** (the case `STORAGE_VERSION` 2 requires) |
 
-58 tests across 7 files (29 original + 29 added).
+68 tests across 7 files (29 original; 39 added by the feature and its two
+post-implementation fixes).
 
 ## Deviations and Decisions
 
@@ -218,7 +256,8 @@ Recorded here because nowhere else will.
 - **Reads:** the server (Turso via `/api/*`) remains the source of truth for
   **tasks** — `todoStore.init()` still fetches server-first. For **notes** the
   merged local+server set is authoritative in memory; merge-on-load keeps the
-  newer `updatedAt` per id and never drops a local-only note.
+  newer `updatedAt` per id, keeps a `pending` local-only note, and drops a
+  confirmed one the server no longer lists.
 - **Writes:** `todoStore` is the **single snapshot writer** for the persisted
   local state (tasks **and** notes, plus `filters`, `view`, `activeNoteId`).
   `notesStore` holds note state and drives server sync but writes no snapshot.
@@ -262,6 +301,19 @@ Recorded here because nowhere else will.
   Session 006 exists to build (the work the session reorder moved out of 005).
 - **Client-generated ids are trusted by the server**; uniqueness is the
   client's responsibility (ADR-004).
+- **A deletion propagates by inference, not by a record of the deletion — so one
+  upgrade case is decided rather than solved, and an offline deletion is not
+  durable** (added 2026-10-17, ADR-004's third amendment). A record written
+  before the `pending` flag existed reads as **confirmed**: `POST /api/notes`
+  sends every new note as it is created, so a pre-flag note has almost certainly
+  been synced, and reading those records as unconfirmed instead would leave a
+  deletion unable to propagate on any device that upgrades — the residual risk is
+  confined to a note created before this change while the server was unreachable.
+  In the other direction, deleting a note while **offline** fails its `DELETE` and
+  records no intent, so the note stays on the other devices until it is deleted
+  again. Both disappear with tombstones (`deleted_at`, soft delete then purge),
+  which make a deletion an operation like any other: Session 007
+  (`docs/BACKLOG.md`).
 - The snapshot now grows with note bodies rather than staying bounded by task
   count (ADR-004).
 
@@ -273,8 +325,10 @@ Recorded here because nowhere else will.
   Session 006 reuses `mergeNotes`.
 - **Session 006.5** — tests for `TodoStore` and the repository.
 - **Session 007** — operation-based persistence beneath the facade; replaces
-  snapshot persistence and can carry the confirmed-writes tracking that closes
-  the failed-create sync gap.
+  snapshot persistence, carries **deletion tombstones** (`deleted_at`, soft delete
+  then purge) so an offline deletion is durable, and can carry the
+  confirmed-writes tracking that closes the failed-create sync gap
+  (`docs/BACKLOG.md`).
 
 ## Known Limitations
 
@@ -350,6 +404,7 @@ spec's §7 table (so they carry no §7 row number), adapted from
 
 - [ ] **Sync window (Review Focus 5):** type in note A, immediately click note B within one second, type in B, then reload. **Expected:** A holds only A's text and B holds only B's text — nothing lost, nothing crossed.
 - [ ] **One writer (plan Task 5, step 8.7):** add a task on the board, then immediately type in the note and reload. **Expected:** both the new task and the new text survive — one snapshot carries tasks and notes together, neither overwrote the other.
+- [ ] **Cross-device deletion (added 2026-10-17 — the reported bug):** create a note in browser A, let browser B sync it, then delete the note in **A** (`⋯` → Delete → confirm). **Expected in B:** reload once — the note is **gone**; reload again — **still gone**. Before `2408d67` it reappeared on every reload, forever.
 
 Note for row 10: the API endpoints the note sync calls are exercised by the probe
 above, but the sync behaviour itself (and "local writing is kept, not replaced")
